@@ -88,20 +88,20 @@
       <div class="panel">
         <div class="panel-header">Launch a scan</div>
         <div class="panel-body">
-          <label>Choose scanner</label>
-          <select>
+          <label for="scanner-select">Choose scanner</label>
+          <select id="scanner-select">
             {#each scanners as scanner}
               <option>{scanner.name}</option>
             {/each}
           </select>
-          <label>Profile</label>
-          <select>
+          <label for="profile-select">Profile</label>
+          <select id="profile-select">
             {#each quickProfiles as profile}
               <option>{profile.name}</option>
             {/each}
           </select>
-          <label>Target</label>
-          <select>
+          <label for="target-select">Target</label>
+          <select id="target-select">
             {#each targets as target}
               <option>{target.name}</option>
             {/each}
@@ -130,16 +130,16 @@
       <div class="panel">
         <div class="panel-header">Send a print job</div>
         <div class="panel-body">
-          <label>Choose printer</label>
-          <select>
+          <label for="printer-select">Choose printer</label>
+          <select id="printer-select">
             {#each printers as printer}
               <option>{printer.name}</option>
             {/each}
           </select>
-          <label>File</label>
-          <input type="file" accept="application/pdf,image/*" />
-          <label>Copies</label>
-          <input type="number" min="1" value="1" />
+          <label for="print-file">File</label>
+          <input id="print-file" type="file" accept="application/pdf,image/*" />
+          <label for="print-copies">Copies</label>
+          <input id="print-copies" type="number" min="1" value="1" />
           <button class="primary block">Upload &amp; print</button>
           <p class="muted small">Wire to /api/print to forward documents to CUPS.</p>
         </div>
@@ -164,18 +164,18 @@
       <div class="panel">
         <div class="panel-header">Add target</div>
         <div class="panel-body">
-          <label>Type</label>
-          <select>
+          <label for="target-type">Type</label>
+          <select id="target-type">
             <option>SMB</option>
             <option>SFTP</option>
             <option>Email (SMTP)</option>
             <option>Paperless-ngx</option>
             <option>Webhook</option>
           </select>
-          <label>Name</label>
-          <input type="text" placeholder="e.g. NAS scans" />
-          <label>Connection</label>
-          <input type="text" placeholder="//nas/share or URL" />
+          <label for="target-name">Name</label>
+          <input id="target-name" type="text" placeholder="e.g. NAS scans" />
+          <label for="target-connection">Connection</label>
+          <input id="target-connection" type="text" placeholder="//nas/share or URL" />
           <button class="ghost block">Save target</button>
           <p class="muted small">Persist to /api/targets and validate connectivity.</p>
         </div>
