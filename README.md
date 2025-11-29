@@ -6,10 +6,19 @@ RaspScan is a Raspberry Pi-based scan and print server that centralizes scanning
 - `docs/architecture.md` — system architecture, API overview, security model.
 - `docs/implementation_plan.md` — roadmap from MVP to v1.0.
 - `app/` — backend (FastAPI), core modules, and web UI skeleton.
+- `installer/` — installation helper and systemd unit template.
 
-## Quick Start (planned)
-1. Install dependencies: `sudo apt install cups avahi-daemon sane-airscan python3-venv`.
-2. Create Python virtualenv and install API requirements (to be added).
+## Installation & Autostart
+1. From the repository root run the installer with sudo to set up dependencies, a virtualenv, and a systemd service:
+   ```bash
+   sudo ./installer/install.sh
+   ```
+   This writes `/etc/systemd/system/raspscan.service`, enables it at boot, and starts the API on port 8000.
+2. If you prefer manual setup, edit and copy `installer/raspscan.service` to `/etc/systemd/system/` and adjust `User`, `WorkingDirectory`, and paths to your deployment location, then enable it with `sudo systemctl enable --now raspscan`.
+
+## Quick Start (manual)
+1. Install dependencies: `sudo apt install cups cups-browsed avahi-daemon sane-utils sane-airscan python3-venv`.
+2. Create Python virtualenv and install API requirements: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`.
 3. Run backend: `uvicorn app.main:app --reload`.
 4. Access API at `http://localhost:8000/api/v1` and health check at `/health`.
 
