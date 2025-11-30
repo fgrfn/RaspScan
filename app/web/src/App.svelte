@@ -322,6 +322,8 @@
   let isLoadingHistory = true;
   let pollInterval = null;
   let expandedThumbnail = null; // Track which thumbnail is expanded
+  let ws = null; // WebSocket connection
+  let wsReconnectTimeout = null;
 
   $: navLinks = [
     { label: t.dashboard, href: '#dashboard' },
@@ -360,17 +362,106 @@
       }
     }, 100);
     
-    // Start polling for active jobs
+    // Start WebSocket connection for live updates
+    connectWebSocket();
+    
+    // Fallback polling (reduced frequency since we have WebSocket)
     pollActiveJobs();
-    pollInterval = setInterval(pollActiveJobs, 3000);
+    pollInterval = setInterval(pollActiveJobs, 10000); // 10s instead of 3s
     
     // Cleanup on unmount
     return () => {
       if (pollInterval) {
         clearInterval(pollInterval);
       }
+      if (wsReconnectTimeout) {
+        clearTimeout(wsReconnectTimeout);
+      }
+      if (ws) {
+        ws.close();
+      }
     };
   });
+  
+  function connectWebSocket() {
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/v1/ws`;
+      
+      console.log('Connecting to WebSocket:', wsUrl);
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('✓ WebSocket connected');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          handleWebSocketMessage(message);
+        } catch (error) {
+          console.error('WebSocket message error:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, reconnecting in 5s...');
+        ws = null;
+        // Reconnect after 5 seconds
+        wsReconnectTimeout = setTimeout(() => {
+          connectWebSocket();
+        }, 5000);
+      };
+      
+      // Send ping every 30 seconds to keep connection alive
+      const pingInterval = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send('ping');
+        } else {
+          clearInterval(pingInterval);
+        }
+      }, 30000);
+    } catch (error) {
+      console.error('Failed to connect WebSocket:', error);
+    }
+  }
+  
+  function handleWebSocketMessage(message) {
+    console.log('WebSocket message:', message);
+    
+    if (message.type === 'job_update') {
+      handleJobUpdate(message.data);
+    } else if (message.type === 'scanner_update') {
+      handleScannerUpdate(message.data);
+    } else if (message.type === 'connected') {
+      console.log('WebSocket:', message.message);
+    }
+  }
+  
+  async function handleJobUpdate(jobData) {
+    console.log('Job update received:', jobData);
+    
+    // Update active jobs list
+    await pollActiveJobs();
+    
+    // Reload history if job completed or failed
+    if (jobData.status === 'completed' || jobData.status === 'failed') {
+      await loadHistory();
+    }
+    
+    // Update stats
+    updateStatCards();
+  }
+  
+  function handleScannerUpdate(scannerData) {
+    console.log('Scanner update received:', scannerData);
+    // Reload scanner list
+    loadDevices();
+  }
 
   async function loadData() {
     // Load devices first (most important)

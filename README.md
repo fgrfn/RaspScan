@@ -318,7 +318,30 @@ Or use the Web UI:
 2. Click "Test & Save" to validate connection first
 3. Or click "Save without test" if server is temporarily offline
 
-## Advanced Features
+### Advanced Features
+
+### Real-Time Updates (WebSocket)
+RaspScan supports WebSocket connections for real-time job status updates:
+
+```javascript
+const ws = new WebSocket('ws://YOUR_SERVER_IP/api/v1/ws');
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === 'job_update') {
+    console.log('Job updated:', message.data);
+    // message.data contains: id, status, device_id, target_id, etc.
+  }
+};
+```
+
+**Benefits:**
+- ⚡ Instant status updates (no polling delay)
+- 📉 Reduced server load
+- 🔋 Better battery life for mobile devices
+
+The Web UI automatically uses WebSocket for live updates with polling as fallback.
 
 ### Webhook Notifications
 Get notified when scans complete:
@@ -528,5 +551,8 @@ sensor:
 ### Maintenance
 - `GET /api/v1/maintenance/disk-usage` - Get disk usage stats
 - `POST /api/v1/maintenance/cleanup` - Trigger manual cleanup
+
+### WebSocket (Real-Time Updates)
+- `WS /api/v1/ws` - WebSocket endpoint for live job and scanner updates
 
 Full API documentation: `http://YOUR_SERVER_IP/docs`
