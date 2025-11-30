@@ -13,7 +13,7 @@ Scan2Target is a network scan server that centralizes scanning for network and U
 ### Automated Installation (Recommended)
 1. Clone the repository and run the installer:
    ```bash
-   git clone https://github.com/yourusername/Scan2Target.git
+   git clone https://github.com/fgrfn/Scan2Target.git
    cd Scan2Target
    sudo ./installer/install.sh
    ```
