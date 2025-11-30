@@ -2248,15 +2248,17 @@
             Debug: {statsHourly.length} hours loaded, max count: {maxCount}, non-zero: {statsHourly.filter(h => h.count > 0).length}
           </p>
           <div class="card" style="padding: 1.5rem;">
-            <div style="display: flex; align-items: flex-end; gap: 0.25rem; height: 150px; background: rgba(255,0,0,0.05);">
+            <div style="display: flex; align-items: flex-end; gap: 2px; height: 150px; background: rgba(255,0,0,0.05); border: 1px solid red;">
               {#each statsHourly as hour}
-                {@const barHeight = hour.count > 0 ? (hour.count / maxCount * 100) : 2}
-                <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
+                {@const barHeight = hour.count > 0 ? Math.round((hour.count / maxCount) * 100) : 2}
+                <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; background: rgba(0,255,0,0.1);">
                   <div 
-                    style="width: 100%; background: var(--primary); border-radius: 4px 4px 0 0; transition: all 0.3s; height: {barHeight}%; min-height: {hour.count > 0 ? '5px' : '2px'};"
-                    title="{hour.hour}:00 - {hour.count} scans (height: {barHeight}%)"
-                  ></div>
-                  <div style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--muted);">{hour.hour}</div>
+                    style="width: 100%; background: #3b82f6; border-radius: 4px 4px 0 0; height: {barHeight}px; min-height: {hour.count > 0 ? '10px' : '2px'};"
+                    title="{hour.hour}:00 - {hour.count} scans (height: {barHeight}px)"
+                  >
+                    {#if hour.count > 0}<span style="color: white; font-size: 0.6rem;">{hour.count}</span>{/if}
+                  </div>
+                  <div style="font-size: 0.7rem; margin-top: 0.25rem; color: #888;">{hour.hour}</div>
                 </div>
               {/each}
             </div>
@@ -2265,7 +2267,7 @@
       {:else}
         <div>
           <h3>{t.hourlyDistribution}</h3>
-          <p style="color: var(--danger);">Debug: statsHourly is empty (length: {statsHourly.length})</p>
+          <p style="color: red;">Debug: statsHourly is empty (length: {statsHourly.length})</p>
         </div>
       {/if}
     {:else}
