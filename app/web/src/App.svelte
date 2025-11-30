@@ -93,12 +93,10 @@
   }
 
   function updateStats() {
-    const readyPrinters = printers.filter(p => p.status === 'idle' || p.status === 'Ready').length;
     const todayScans = history.filter(h => h.type === 'Scan' && isToday(h.ts)).length;
     const activeJobs = history.filter(h => h.status === 'In queue' || h.status === 'processing').length;
 
     statCards = [
-      { label: 'Ready printers', value: String(readyPrinters).padStart(2, '0'), icon: '🖨️', sub: 'Available' },
       { label: 'Scanners found', value: String(scanners.length).padStart(2, '0'), icon: '📑', sub: 'eSCL + SANE' },
       { label: 'Today scans', value: String(todayScans), icon: '✅', sub: 'Completed today' },
       { label: 'Active jobs', value: String(activeJobs).padStart(2, '0'), icon: '⏳', sub: 'In progress' }
@@ -448,7 +446,7 @@
         {#if isLoading}
           <p class="muted">⏳ Loading scanners...</p>
         {:else if scanners.length === 0}
-          <p class="muted">No scanners configured. Use Settings → Scanner Management to add.</p>
+          <p class="muted">No scanners configured. Click "Discover Scanners" below to add.</p>
         {:else}
           <ul class="list">
             {#each scanners as scanner}
@@ -468,6 +466,50 @@
             {/each}
           </ul>
         {/if}
+        
+        <h3 class="mt">Scanner Management</h3>
+        <p class="muted">Discover and add USB/wireless scanners via SANE/eSCL. Scanners must be manually added - they are never added automatically.</p>
+        <button class="primary" on:click={discoverScanners} disabled={isDiscovering}>
+          {isDiscovering ? 'Searching...' : 'Discover Scanners'}
+        </button>
+        {#if lastDiscoveryTime}
+          <p class="muted small" style="margin-top: 0.5rem;">
+            Last scan: {lastDiscoveryTime.toLocaleTimeString()} · Click "Discover" to refresh
+          </p>
+        {/if}
+        
+        {#if discoveredScanners.length > 0}
+          <h4 class="mt">Discovered Scanners ({discoveredScanners.length})</h4>
+          <ul class="list">
+            {#each discoveredScanners as device}
+              <li>
+                <div class="list-title">{device.name}</div>
+                <div class="muted">
+                  {device.connection_type || device.type}
+                  {#if device.connection_type && device.connection_type.includes('eSCL')}
+                    <span class="badge success" style="margin-left: 0.5rem;">⭐ Recommended</span>
+                  {/if}
+                  {#if device.already_added}
+                    <span class="badge success" style="margin-left: 0.5rem;">✓ Already Added</span>
+                  {:else}
+                    <span class="badge warning" style="margin-left: 0.5rem;">Not Added Yet</span>
+                  {/if}
+                </div>
+                <div class="muted small" style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
+                  {device.uri}
+                </div>
+                {#if !device.already_added}
+                  <button class="primary small" on:click={() => addDiscoveredScanner(device)}>Add Scanner</button>
+                {:else}
+                  <button class="ghost small" disabled>Already Added</button>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {:else if !isDiscovering}
+          <p class="muted small mt">No scanners found. Make sure scanners are powered on and connected (USB or network).</p>
+        {/if}
+        
         <h3 class="mt">Quick profiles</h3>
         <div class="chip-row">
           {#each quickProfiles as profile}
@@ -633,47 +675,6 @@
           </ul>
         {:else if !isDiscovering}
           <p class="muted small mt">No devices found. Make sure printers are powered on and connected (USB or network).</p>
-        {/if}
-      </div>
-      <div>
-        <h3>Scanner Management</h3>
-        <p class="muted">Discover and add USB/wireless scanners via SANE/eSCL. Scanners must be manually added - they are never added automatically.</p>
-        <button class="primary" on:click={discoverScanners} disabled={isDiscovering}>
-          {isDiscovering ? 'Searching...' : 'Discover Scanners'}
-        </button>
-        {#if lastDiscoveryTime}
-          <p class="muted small" style="margin-top: 0.5rem;">
-            Last scan: {lastDiscoveryTime.toLocaleTimeString()} · Click "Discover" to refresh
-          </p>
-        {/if}
-        
-        {#if discoveredScanners.length > 0}
-          <h4 class="mt">Discovered Scanners ({discoveredScanners.length})</h4>
-          <ul class="list">
-            {#each discoveredScanners as device}
-              <li>
-                <div class="list-title">{device.name}</div>
-                <div class="muted">
-                  {device.connection_type || device.type}
-                  {#if device.already_added}
-                    <span class="badge success" style="margin-left: 0.5rem;">✓ Already Added</span>
-                  {:else}
-                    <span class="badge warning" style="margin-left: 0.5rem;">Not Added Yet</span>
-                  {/if}
-                </div>
-                <div class="muted small" style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
-                  {device.uri}
-                </div>
-                {#if !device.already_added}
-                  <button class="primary small" on:click={() => addDiscoveredScanner(device)}>Add Scanner</button>
-                {:else}
-                  <button class="ghost small" disabled>Already Added</button>
-                {/if}
-              </li>
-            {/each}
-          </ul>
-        {:else if !isDiscovering}
-          <p class="muted small mt">No scanners found. Make sure scanners are powered on and connected (USB or network).</p>
         {/if}
       </div>
     </div>
