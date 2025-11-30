@@ -138,28 +138,44 @@ class ScannerManager:
         """
         return [
             {
+                'id': 'document_200_pdf',
+                'name': 'Document @200 DPI (Small)',
+                'dpi': 200,
+                'color_mode': 'Gray',
+                'paper_size': 'A4',
+                'format': 'pdf',
+                'quality': 80,
+                'description': 'Best for text documents - smallest size'
+            },
+            {
                 'id': 'color_300_pdf',
-                'name': 'Color @300 DPI',
+                'name': 'Color @300 DPI (Medium)',
                 'dpi': 300,
                 'color_mode': 'Color',
                 'paper_size': 'A4',
-                'format': 'pdf'
+                'format': 'pdf',
+                'quality': 85,
+                'description': 'Good quality for mixed content'
             },
             {
                 'id': 'gray_150_pdf',
-                'name': 'Grayscale @150 DPI',
+                'name': 'Grayscale @150 DPI (Fast)',
                 'dpi': 150,
                 'color_mode': 'Gray',
                 'paper_size': 'A4',
-                'format': 'pdf'
+                'format': 'pdf',
+                'quality': 75,
+                'description': 'Quick scans, very small size'
             },
             {
                 'id': 'photo_600_jpeg',
-                'name': 'Photo @600 DPI',
+                'name': 'Photo @600 DPI (High Quality)',
                 'dpi': 600,
                 'color_mode': 'Color',
                 'paper_size': 'A4',
-                'format': 'jpeg'
+                'format': 'jpeg',
+                'quality': 95,
+                'description': 'Best quality for photos'
             }
         ]
 
@@ -256,16 +272,43 @@ class ScannerManager:
                 pdf_file = output_dir / f"{prefix}_{job_id}.pdf"
                 print(f"Converting TIFF to PDF: {pdf_file}")
                 
-                # Use ImageMagick convert
+                # Get quality setting from profile (default 85)
+                quality = str(profile.get('quality', 85))
+                
+                # Use ImageMagick convert with compression
+                # -compress JPEG for color/grayscale reduces file size dramatically
+                # -quality controls compression (higher = better quality, larger file)
+                # Typical results: 30+ MB TIFF -> 200-500 KB PDF
+                convert_cmd = [
+                    'convert', 
+                    str(tiff_file),
+                    '-compress', 'JPEG',
+                    '-quality', quality,
+                    '-density', str(profile['dpi']),  # Match scan DPI
+                ]
+                
+                # For grayscale, add additional compression
+                if profile['color_mode'] == 'Gray':
+                    convert_cmd.extend(['-colorspace', 'Gray'])
+                
+                # Add output file
+                convert_cmd.append(str(pdf_file))
+                
+                print(f"PDF conversion command: {' '.join(convert_cmd)}")
+                
                 convert_result = subprocess.run(
-                    ['convert', str(tiff_file), str(pdf_file)],
+                    convert_cmd,
                     capture_output=True,
                     text=True,
                     timeout=60
                 )
                 
                 if convert_result.returncode == 0 and pdf_file.exists():
-                    print(f"PDF conversion successful: {pdf_file} ({pdf_file.stat().st_size} bytes)")
+                    tiff_size = tiff_file.stat().st_size
+                    pdf_size = pdf_file.stat().st_size
+                    ratio = (1 - pdf_size / tiff_size) * 100 if tiff_size > 0 else 0
+                    print(f"PDF conversion successful: {pdf_file}")
+                    print(f"  Size: {pdf_size:,} bytes (saved {ratio:.1f}%)")
                     tiff_file.unlink()  # Remove TIFF after successful conversion
                     final_file = pdf_file
                 else:
@@ -275,15 +318,22 @@ class ScannerManager:
                 jpeg_file = output_dir / f"{prefix}_{job_id}.jpg"
                 print(f"Converting TIFF to JPEG: {jpeg_file}")
                 
+                # Get quality setting from profile (default 90)
+                quality = str(profile.get('quality', 90))
+                
                 convert_result = subprocess.run(
-                    ['convert', str(tiff_file), '-quality', '90', str(jpeg_file)],
+                    ['convert', str(tiff_file), '-quality', quality, str(jpeg_file)],
                     capture_output=True,
                     text=True,
                     timeout=60
                 )
                 
                 if convert_result.returncode == 0 and jpeg_file.exists():
-                    print(f"JPEG conversion successful: {jpeg_file} ({jpeg_file.stat().st_size} bytes)")
+                    tiff_size = tiff_file.stat().st_size
+                    jpeg_size = jpeg_file.stat().st_size
+                    ratio = (1 - jpeg_size / tiff_size) * 100 if tiff_size > 0 else 0
+                    print(f"JPEG conversion successful: {jpeg_file}")
+                    print(f"  Size: {jpeg_size:,} bytes (saved {ratio:.1f}%)")
                     tiff_file.unlink()  # Remove TIFF
                     final_file = jpeg_file
                 else:
