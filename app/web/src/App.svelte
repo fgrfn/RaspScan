@@ -688,9 +688,13 @@
       if (timelineRes.ok) statsTimeline = await timelineRes.json();
       if (scannersRes.ok) statsScanners = await scannersRes.json();
       if (targetsRes.ok) statsTargets = await targetsRes.json();
-      if (hourlyRes.ok) statsHourly = await hourlyRes.json();
+      if (hourlyRes.ok) {
+        statsHourly = await hourlyRes.json();
+        console.log('Hourly stats loaded:', statsHourly);
+        console.log('Non-zero hours:', statsHourly.filter(h => h.count > 0));
+      }
       
-      console.log('Stats loaded:', { statsOverview, statsTimeline: statsTimeline.length });
+      console.log('Stats loaded:', { statsOverview, statsTimeline: statsTimeline.length, hourlyCount: statsHourly.length });
     } catch (error) {
       console.error('Failed to load stats:', error);
     } finally {
