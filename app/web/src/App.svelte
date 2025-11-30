@@ -32,6 +32,8 @@
   let discoveredScanners = [];
   let isDiscovering = false;
   let lastDiscoveryTime = null;
+  
+  let isLoading = true;
 
   const navLinks = [
     { label: 'Dashboard', href: '#dashboard' },
@@ -53,6 +55,7 @@
   });
 
   async function loadData() {
+    isLoading = true;
     try {
       const [devicesRes, targetsRes, historyRes] = await Promise.all([
         fetch(`${API_BASE}/devices`),
@@ -85,6 +88,8 @@
       updateStats();
     } catch (error) {
       console.error('Failed to load data:', error);
+    } finally {
+      isLoading = false;
     }
   }
 
@@ -442,7 +447,9 @@
     <div class="grid two-cols">
       <div>
         <h3>Configured Scanners</h3>
-        {#if scanners.length === 0}
+        {#if isLoading}
+          <p class="muted">⏳ Loading scanners...</p>
+        {:else if scanners.length === 0}
           <p class="muted">No scanners configured. Use Settings → Scanner Management to add.</p>
         {:else}
           <ul class="list">
@@ -498,8 +505,10 @@
     <div class="grid two-cols">
       <div>
         <h3>Configured Printers</h3>
-        {#if printers.length === 0}
-          <p class="muted">No printers configured. Use Settings → Discover Printers to add.</p>
+        {#if isLoading}
+          <p class="muted">⏳ Loading printers...</p>
+        {:else if printers.length === 0}
+          <p class="muted">No printers configured yet. Use Settings → Printer Management to add.</p>
         {:else}
           <ul class="list">
             {#each printers as printer}
@@ -539,7 +548,9 @@
     <div class="grid two-cols">
       <div>
         <h3>Configured targets</h3>
-        {#if targets.length === 0}
+        {#if isLoading}
+          <p class="muted">⏳ Loading targets...</p>
+        {:else if targets.length === 0}
           <p class="muted">No targets configured yet.</p>
         {:else}
           <ul class="list">
