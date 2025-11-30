@@ -6,7 +6,6 @@
 
   const API_BASE = '/api/v1';
 
-  let printers = [];
   let scanners = [];
   let targets = [];
   let history = [];
@@ -17,9 +16,6 @@
   let selectedTarget = '';
   let scanFilename = '';
   let scanSource = 'Flatbed';
-  let selectedPrinter = '';
-  let printCopies = 1;
-  let printFile = null;
   
   let targetType = 'SMB';
   let targetName = '';
@@ -27,9 +23,7 @@
   let targetUsername = '';
   let targetPassword = '';
   
-  let showPrinterSettings = false;
-  let newPrinterUri = '';
-  let newPrinterName = '';
+
   let discoveredDevices = [];
   let discoveredScanners = [];
   let isDiscovering = false;
@@ -111,7 +105,6 @@
       const res = await fetch(`${API_BASE}/devices`);
       if (res.ok) {
         const devices = await res.json();
-        printers = devices.filter(d => d.device_type === 'printer');
         scanners = devices.filter(d => d.device_type === 'scanner');
         // Auto-select favorite scanner if none selected
         const favoriteScanner = scanners.find(s => s.is_favorite);

@@ -5,7 +5,6 @@ from pydantic import BaseModel
 import time
 
 from app.core.devices.repository import DeviceRepository, DeviceRecord
-from app.core.printing.manager import PrinterManager
 from app.core.scanning.manager import ScannerManager
 
 router = APIRouter()
