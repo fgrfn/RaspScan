@@ -25,12 +25,20 @@
 - Modern Svelte + Vite frontend
 - Multi-language support (English, German)
 - Responsive PWA design
-- Statistics dashboard with analytics
+- Statistics dashboard with comprehensive analytics:
+  - Total scans, success rate, daily averages
+  - Most used scanner/target
+  - Hourly scan distribution chart with timezone conversion
+  - Scanner and target usage breakdowns
+  - 30-day timeline view
 - Live scan previews and thumbnails
 - Favorites system for scanners/targets
 - Manual scanner addition via IP
 - Connection testing for targets
-- Clear history functionality
+- Clear history functionality (all or individual jobs)
+- Delete target statistics
+- Formatted scanner names (model + IP)
+- Real-time timezone conversion (UTC to local)
 
 ### ✅ Advanced Features
 - Multi-page scanning (ADF support)

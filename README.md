@@ -8,13 +8,17 @@ Modern web-based scan server for network and USB scanners. Control scanners remo
 
 - 🖨️ **Auto-Discovery** - USB and network scanners (SANE/eSCL)
 - 🎯 **9 Target Types** - SMB, SFTP, Email, Paperless-ngx, Webhooks, Google Drive, Dropbox, OneDrive, Nextcloud
-- 🌍 **Multi-Language** - English/German UI
-- 📊 **Statistics** - Usage tracking and analytics
+- 🌍 **Multi-Language** - English/German UI with complete translations
+- 📊 **Statistics** - Comprehensive analytics dashboard:
+  - Hourly scan distribution (browser timezone)
+  - Scanner/target usage statistics
+  - Success rates and daily averages
+  - 30-day timeline tracking
 - 🔒 **Secure** - Encrypted credentials (Fernet AES-128)
 - 🔄 **Auto-Retry** - Failed uploads retry automatically
 - 📱 **PWA** - Install as native app
 - 🔍 **Preview** - Low-res preview before full scan
-- ⚡ **Real-Time** - WebSocket live updates
+- ⚡ **Real-Time** - WebSocket live updates with timezone conversion
 
 ## Quick Start
 

@@ -11,6 +11,7 @@ Scan2Target is a web-based scan server for Linux systems, Raspberry Pi, and virt
 - **Targets:** SMB/CIFS, SFTP, Email (SMTP), Paperless-ngx, Webhooks, Cloud (Google Drive, Dropbox, OneDrive, Nextcloud/WebDAV)
 - **Security:** Optional JWT authentication, encrypted credential storage (Fernet AES-128), reverse-proxy friendly HTTPS
 - **Extensibility:** Pluggable targets, scan profiles, real-time WebSocket updates
+- **Analytics:** Hourly scan distribution, scanner/target statistics, timeline tracking with proper timezone conversion
 
 ## High-Level Architecture
 ```
@@ -59,8 +60,8 @@ Scan2Target is a web-based scan server for Linux systems, Raspberry Pi, and virt
 4. **Execution**: Start scan with requested parameters; stream to temporary file.
 5. **Post-processing**: Convert to PDF/JPEG as needed; apply filename template `{prefix}{profile}_{date}_{time}.{ext}`.
 6. **Target Delivery**: Core/Targets writes or uploads the file to the selected destination; optional webhook notification.
-7. **Job Tracking**: Core/Jobs records status transitions (queued → running → delivered/failed) and stores metadata (scanner, profile, target, file path/URL).
-8. **UI Feedback**: Clients poll `GET /api/v1/scan/jobs/{id}` or receive WebSocket events for progress.
+7. **Job Tracking**: Core/Jobs records status transitions (queued → running → delivered/failed) and stores metadata (scanner, profile, target, file path/URL). All timestamps stored as UTC.
+8. **UI Feedback**: Clients poll `GET /api/v1/scan/jobs/{id}` or receive WebSocket events for progress. Frontend converts UTC timestamps to browser local time.
 
 ### Print Workflow
 1. **User Action**: Upload PDF/JPEG/PNG, choose printer and options.
@@ -92,6 +93,13 @@ Scan2Target is a web-based scan server for Linux systems, Raspberry Pi, and virt
 - `DELETE /api/v1/targets/{id}` — delete target.
 - `POST /api/v1/targets/{id}/test` — connectivity test.
 - `GET /api/v1/history` — unified scan/print history.
+- `DELETE /api/v1/history` — clear completed jobs.
+- `DELETE /api/v1/history/{id}` — delete single job.
+- `GET /api/v1/stats/overview` — total scans, success rate, averages.
+- `GET /api/v1/stats/timeline` — daily scan counts (last 30 days).
+- `GET /api/v1/stats/scanners` — per-scanner usage statistics.
+- `GET /api/v1/stats/targets` — per-target delivery statistics.
+- `DELETE /api/v1/stats/targets/{name}` — delete all jobs for a target.
 - `POST /api/v1/auth/login` — obtain session/token.
 - `POST /api/v1/auth/logout` — revoke session.
 
