@@ -21,7 +21,7 @@ class ScannerManager:
         """
         Discover SANE scanners (USB, network eSCL/AirScan).
         
-        Uses 'scanimage -L' to list available devices.
+        Uses 'airscan-discover' to find eSCL scanners (more reliable than scanimage -L).
         Supports both USB SANE backends and eSCL (AirScan) for network scanners.
         
         Filters duplicate devices by preferring:
@@ -33,56 +33,72 @@ class ScannerManager:
         device_groups = {}  # Group by normalized name to detect duplicates
         
         try:
+            # Use airscan-discover instead of scanimage -L (more reliable)
             result = subprocess.run(
-                ['scanimage', '-L'],
+                ['airscan-discover'],
                 capture_output=True,
                 text=True,
                 encoding='utf-8',
-                errors='replace',  # Replace invalid UTF-8 bytes with �
-                timeout=8
+                errors='replace',
+                timeout=15
             )
             
             if result.returncode == 0:
+                # Parse airscan-discover output
+                # Format: "HP ENVY 6400 series [059A50] = http://10.10.30.146:8080/eSCL/, eSCL"
+                in_devices_section = False
+                
                 for line in result.stdout.strip().split('\n'):
-                    # Parse: "device `escl:http://192.168.1.100:80' is a HP ENVY 6400 flatbed scanner"
-                    # or: "device `hpaio:/usb/HP_ENVY_6400?serial=...' is a ..."
-                    match = re.match(r"device `([^']+)' is a (.+)", line)
-                    if match:
-                        device_id = match.group(1)
-                        description = match.group(2)
+                    line = line.strip()
+                    
+                    if line == '[devices]':
+                        in_devices_section = True
+                        continue
+                    
+                    if not in_devices_section or not line or line.startswith('['):
+                        continue
+                    
+                    # Parse device line: "HP ENVY 6400 series [059A50] = http://..., eSCL"
+                    if '=' in line:
+                        name_part, url_part = line.split('=', 1)
+                        name_part = name_part.strip()
+                        url_part = url_part.strip()
                         
+                        # Extract URL and protocol
+                        parts = url_part.split(',')
+                        url = parts[0].strip()
+                        protocol = parts[1].strip() if len(parts) > 1 else 'Unknown'
+                        
+                        # Extract device name and serial
+                        name_match = re.match(r'(.+?)\s*\[([^\]]+)\]', name_part)
+                        if name_match:
+                            device_name = name_match.group(1).strip()
+                            serial = name_match.group(2).strip()
+                        else:
+                            device_name = name_part
+                            serial = None
+                        
+                        # Determine device type and priority
                         device_type = 'Unknown'
                         priority = 99
                         
-                        if device_id.startswith('escl:'):
-                            # eSCL over network - highest priority for network
-                            if '127.0.0.1' in device_id or 'USB' in device_id:
+                        if protocol == 'eSCL':
+                            if '127.0.0.1' in url or '::1' in url or 'USB' in name_part:
                                 device_type = 'eSCL (USB)'
                                 priority = 2
                             else:
                                 device_type = 'eSCL (Network)'
                                 priority = 1
-                        elif device_id.startswith('airscan:'):
-                            device_type = 'AirScan'
-                            priority = 1
-                        elif 'hpaio:/usb' in device_id.lower():
-                            device_type = 'USB (HPAIO)'
-                            priority = 2
-                        elif 'usb' in device_id.lower():
-                            device_type = 'USB'
-                            priority = 2
-                        elif 'hpaio:/net' in device_id.lower():
-                            device_type = 'Network (HPAIO)'
-                            priority = 3
-                        elif 'net' in device_id.lower() or 'network' in device_id.lower():
-                            device_type = 'Network'
+                        elif protocol == 'WSD':
+                            device_type = 'WSD (Network)'
                             priority = 3
                         
-                        # Normalize device name (remove model/serial specifics)
-                        # Extract base model name from description
-                        base_name = description.split('flatbed')[0].strip()
-                        base_name = re.sub(r'\[.*?\]', '', base_name).strip()  # Remove [serial]
-                        base_name = re.sub(r'\s+', ' ', base_name)  # Normalize whitespace
+                        # Build SANE device ID for airscan
+                        # Format: airscan:escl:Device Name:URL
+                        device_id = f"airscan:escl:{device_name.replace(' ', '_')}:{url}"
+                        
+                        # Use base name for grouping (without serial)
+                        base_name = device_name
                         
                         # Group by base name
                         if base_name not in device_groups:
@@ -90,7 +106,7 @@ class ScannerManager:
                         
                         device_groups[base_name].append({
                             'id': device_id,
-                            'name': description,
+                            'name': f"{device_name} [{serial}]" if serial else device_name,
                             'type': device_type,
                             'priority': priority,
                             'supported': True
