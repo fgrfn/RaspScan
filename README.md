@@ -53,27 +53,27 @@ sudo systemctl restart scan2target
 
 ### 1. Add Scanner
 1. Open Web UI
-2. Go to "Scannen" section
-3. Click "🔍 Scanner suchen"
+2. Go to "Scan" section
+3. Click "Discover Scanners"
 4. Select discovered scanner
-5. Click "Scanner hinzufügen"
+5. Click "Add Scanner"
 
 ### 2. Add Target
-1. Go to "Ziele" section
+1. Go to "Targets" section
 2. Click target type (SMB, Email, Cloud, etc.)
 3. Fill in connection details:
    - **SMB:** Share path (`//nas.local/scans`), username, password
    - **Email:** Recipient, SMTP server, credentials
    - **Cloud:** OAuth2 tokens, folder paths
-4. Click "Testen & Speichern" to validate connection
+4. Click "Test & Save" to validate connection
 5. Target is saved and ready to use
 
 ### 3. Start Scan
 1. Select scanner from dropdown
 2. Choose scan profile (Document, Photo, ADF)
 3. Select target destination
-4. Click "Scan starten"
-5. Monitor progress in "Aktive Scans"
+4. Click "Start Scan"
+5. Monitor progress in "Active Scans"
 
 ## Scan Profiles
 
