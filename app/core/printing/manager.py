@@ -413,7 +413,11 @@ class PrinterManager:
             
             print(f"✓ Printer '{safe_name}' added to CUPS")
                 
-        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+        except FileNotFoundError:
+            raise Exception("CUPS is not installed. Install with: sudo apt install cups cups-browsed")
+        except subprocess.TimeoutExpired:
+            raise Exception(f"Timeout while adding printer '{safe_name}'")
+        except Exception as e:
             raise Exception(f"Failed to add printer: {e}")
 
     def remove_printer(self, printer_id: str) -> None:
@@ -442,7 +446,7 @@ class PrinterManager:
             print(f"✓ Printer '{printer_id}' removed from CUPS")
                 
         except FileNotFoundError:
-            raise Exception("lpadmin command not found. CUPS is not installed.")
+            raise Exception("CUPS is not installed. Install with: sudo apt install cups cups-browsed")
         except subprocess.TimeoutExpired:
             raise Exception(f"Timeout while removing printer '{printer_id}'")
         except Exception as e:

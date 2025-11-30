@@ -76,12 +76,16 @@ async def add_printer(printer: AddPrinterRequest):
     USB printers are auto-detected - you don't need to specify the USB port.
     Just use the URI from /discover endpoint.
     """
-    PrinterManager().add_printer(
-        uri=printer.uri,
-        name=printer.name,
-        description=printer.description
-    )
-    return {"status": "added", "name": printer.name}
+    try:
+        PrinterManager().add_printer(
+            uri=printer.uri,
+            name=printer.name,
+            description=printer.description
+        )
+        return {"status": "added", "name": printer.name}
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/{printer_id}")

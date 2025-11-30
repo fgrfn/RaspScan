@@ -227,11 +227,12 @@
         await discoverPrinters();
         alert(`Printer "${device.name}" added successfully`);
       } else {
-        alert('Failed to add printer');
+        const error = await response.json();
+        alert(`Failed to add printer: ${error.detail || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Add printer error:', error);
-      alert('Failed to add printer');
+      alert(`Failed to add printer: ${error.message || 'Network error'}`);
     }
   }
 
@@ -285,11 +286,12 @@
         showPrinterSettings = false;
         alert('Printer added successfully');
       } else {
-        alert('Failed to add printer');
+        const error = await response.json();
+        alert(`Failed to add printer: ${error.detail || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Add printer error:', error);
-      alert('Failed to add printer');
+      alert(`Failed to add printer: ${error.message || 'Network error'}`);
     }
   }
 </script>
