@@ -38,7 +38,6 @@
   const navLinks = [
     { label: 'Dashboard', href: '#dashboard' },
     { label: 'Scan', href: '#scan' },
-    { label: 'Print', href: '#print' },
     { label: 'Targets', href: '#targets' },
     { label: 'History', href: '#history' },
     { label: 'Settings', href: '#settings' }
@@ -430,11 +429,10 @@
   <section id="dashboard" class="hero">
     <div>
       <p class="eyebrow">Raspberry Pi · FastAPI · Svelte</p>
-      <h1>Central hub for scanning &amp; printing.</h1>
-      <p class="lede">Trigger scans on devices without physical buttons, route files to SMB, email, Paperless-ngx, or webhooks, and manage printers with CUPS/AirPrint.</p>
+      <h1>Central hub for scanning.</h1>
+      <p class="lede">Trigger scans on devices without physical buttons, and route files to SMB, email, Paperless-ngx, or webhooks.</p>
       <div class="actions">
         <a class="primary" href="#scan">Start a scan</a>
-        <a class="ghost" href="#print">Send a print job</a>
       </div>
     </div>
     <div class="card hero-card">
@@ -456,7 +454,12 @@
             {#each scanners as scanner}
               <li style="display: flex; align-items: center; justify-content: space-between;">
                 <div style="flex: 1;">
-                  <div class="list-title">{scanner.name}</div>
+                  <div class="list-title">
+                    {scanner.name}
+                    {#if scanner.connection_type && scanner.connection_type.includes('eSCL')}
+                      <span class="badge success" style="margin-left: 0.5rem; font-size: 0.7rem;">⭐ Recommended</span>
+                    {/if}
+                  </div>
                   <div class="muted">{scanner.connection_type || scanner.type || 'Unknown'}</div>
                   <span class="badge {scanner.status === 'online' ? 'success' : 'warning'}">{scanner.status || 'unknown'}</span>
                 </div>
@@ -496,49 +499,6 @@
             {/each}
           </select>
           <button class="primary block" on:click={startScan}>Start scan</button>
-        </div>
-      </div>
-    </div>
-  </SectionCard>
-
-  <SectionCard id="print" title="Print" subtitle="Upload PDFs or images and forward them to CUPS printers.">
-    <div class="grid two-cols">
-      <div>
-        <h3>Configured Printers</h3>
-        {#if isLoading}
-          <p class="muted">⏳ Loading printers...</p>
-        {:else if printers.length === 0}
-          <p class="muted">No printers configured yet. Use Settings → Printer Management to add.</p>
-        {:else}
-          <ul class="list">
-            {#each printers as printer}
-              <li>
-                <div class="list-title">{printer.name}</div>
-                <div class="muted">{printer.type || 'Unknown'} · {printer.id}</div>
-                <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
-                  <span class={`badge ${printer.status === 'idle' ? 'success' : 'warning'}`}>{printer.status}</span>
-                  <button class="ghost small" on:click={() => removeDevice(printer.id, 'printer')}>Remove</button>
-                </div>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-      <div class="panel">
-        <div class="panel-header">Send a print job</div>
-        <div class="panel-body">
-          <label for="printer-select">Choose printer</label>
-          <select id="printer-select" bind:value={selectedPrinter}>
-            <option value="">-- Select printer --</option>
-            {#each printers as printer}
-              <option value={printer.id}>{printer.name}</option>
-            {/each}
-          </select>
-          <label for="file-input">File</label>
-          <input id="file-input" type="file" accept="application/pdf,image/*" on:change={(e) => printFile = e.target.files[0]} />
-          <label for="copies-input">Copies</label>
-          <input id="copies-input" type="number" min="1" bind:value={printCopies} />
-          <button class="primary block" on:click={submitPrintJob}>Upload &amp; print</button>
         </div>
       </div>
     </div>
