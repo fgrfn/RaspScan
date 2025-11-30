@@ -17,6 +17,7 @@ class Target(BaseModel):
     config: dict
     enabled: bool = True
     description: str | None = None
+    is_favorite: bool = False
 
 
 @router.get("/", response_model=List[Target])
@@ -33,7 +34,8 @@ async def list_targets():
                 name=t.name,
                 config=t.config,
                 enabled=t.enabled,
-                description=t.description
+                description=t.description,
+                is_favorite=t.is_favorite
             )
             for t in targets
         ]
@@ -66,7 +68,8 @@ async def create_target(target: Target, validate: bool = True):
             name=target.name,
             config=target.config,
             enabled=target.enabled,
-            description=target.description
+            description=target.description,
+            is_favorite=target.is_favorite
         )
         
         result = TargetManager().create_target(target_config, validate=validate)
@@ -79,7 +82,8 @@ async def create_target(target: Target, validate: bool = True):
             name=result.name,
             config=result.config,
             enabled=result.enabled,
-            description=result.description
+            description=result.description,
+            is_favorite=result.is_favorite
         )
     except Exception as e:
         print(f"ERROR creating target: {str(e)}")
@@ -108,7 +112,8 @@ async def update_target(target_id: str, target: Target, validate: bool = True):
             name=target.name,
             config=target.config,
             enabled=target.enabled,
-            description=target.description
+            description=target.description,
+            is_favorite=target.is_favorite
         )
         
         result = TargetManager().update_target(target_id, target_config, validate=validate)
@@ -119,7 +124,8 @@ async def update_target(target_id: str, target: Target, validate: bool = True):
             name=result.name,
             config=result.config,
             enabled=result.enabled,
-            description=result.description
+            description=result.description,
+            is_favorite=result.is_favorite
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

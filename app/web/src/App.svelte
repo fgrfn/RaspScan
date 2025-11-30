@@ -136,6 +136,11 @@
       const res = await fetch(`${API_BASE}/targets`);
       if (res.ok) {
         targets = await res.json();
+        // Auto-select favorite target if none selected
+        const favorite = targets.find(t => t.is_favorite);
+        if (favorite && !selectedTarget) {
+          selectedTarget = favorite.id;
+        }
         console.log(`[TIMING] loadTargets: ${(performance.now() - start).toFixed(0)}ms`);
       }
     } catch (error) {
@@ -295,6 +300,31 @@
     }
   }
 
+  async function toggleFavorite(targetId, isFavorite) {
+    try {
+      const target = targets.find(t => t.id === targetId);
+      if (!target) return;
+      
+      const response = await fetch(`${API_BASE}/targets/${targetId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...target,
+          is_favorite: isFavorite
+        })
+      });
+      
+      if (response.ok) {
+        await loadTargets();
+      } else {
+        alert('Failed to update favorite');
+      }
+    } catch (error) {
+      console.error('Toggle favorite error:', error);
+      alert('Failed to update favorite');
+    }
+  }
+
   async function removeTarget(targetId) {
     if (!confirm(`Remove target "${targetId}"?`)) {
       return;
@@ -330,8 +360,8 @@
       });
       
       if (response.ok) {
-        await loadData();
         alert(`✅ ${typeName.charAt(0).toUpperCase() + typeName.slice(1)} removed successfully`);
+        await loadDevices();
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         alert(`❌ Failed to remove ${typeName}: ${errorData.detail || response.statusText}`);
@@ -622,7 +652,9 @@
           <select id="target-select" bind:value={selectedTarget}>
             <option value="">-- Select target --</option>
             {#each targets as target}
-              <option value={target.id}>{target.name}</option>
+              <option value={target.id}>
+                {#if target.is_favorite}⭐ {/if}{target.name}
+              </option>
             {/each}
           </select>
           <label for="filename-input">Filename (optional)</label>
@@ -654,11 +686,22 @@
             {#each targets as target}
               <li style="display: flex; align-items: center; justify-content: space-between;">
                 <div style="flex: 1;">
-                  <div class="list-title">{target.name}</div>
+                  <div class="list-title">
+                    {#if target.is_favorite}⭐ {/if}{target.name}
+                  </div>
                   <div class="muted">{target.type}: {target.config?.connection || 'N/A'}</div>
                   <span class="badge {target.enabled ? 'success' : 'warning'}">{target.enabled ? 'Enabled' : 'Disabled'}</span>
                 </div>
-                <button class="danger small" on:click={() => removeTarget(target.id)}>Remove</button>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button 
+                    class="ghost small" 
+                    on:click={() => toggleFavorite(target.id, !target.is_favorite)}
+                    title="{target.is_favorite ? 'Remove from' : 'Add to'} favorites"
+                  >
+                    {target.is_favorite ? '⭐' : '☆'}
+                  </button>
+                  <button class="danger small" on:click={() => removeTarget(target.id)}>Remove</button>
+                </div>
               </li>
             {/each}
           </ul>

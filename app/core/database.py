@@ -57,6 +57,7 @@ class Database:
                     config TEXT NOT NULL,
                     enabled INTEGER DEFAULT 1,
                     description TEXT,
+                    is_favorite INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )

@@ -17,3 +17,4 @@ class TargetConfig(BaseModel):
     config: dict
     enabled: bool = True
     description: Optional[str] = None
+    is_favorite: bool = False

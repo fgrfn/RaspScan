@@ -19,8 +19,8 @@ class TargetRepository:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO targets (id, type, name, config, enabled, description, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO targets (id, type, name, config, enabled, description, is_favorite, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 target.id,
                 target.type,
@@ -28,6 +28,7 @@ class TargetRepository:
                 json.dumps(target.config),
                 1 if target.enabled else 0,
                 target.description,
+                1 if target.is_favorite else 0,
                 datetime.utcnow().isoformat(),
                 datetime.utcnow().isoformat()
             ))
@@ -47,7 +48,8 @@ class TargetRepository:
                     name=row['name'],
                     config=json.loads(row['config']),
                     enabled=bool(row['enabled']),
-                    description=row['description']
+                    description=row['description'],
+                    is_favorite=bool(row.get('is_favorite', 0))
                 )
         return None
     
@@ -57,7 +59,7 @@ class TargetRepository:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE targets 
-                SET type = ?, name = ?, config = ?, enabled = ?, description = ?, updated_at = ?
+                SET type = ?, name = ?, config = ?, enabled = ?, description = ?, is_favorite = ?, updated_at = ?
                 WHERE id = ?
             """, (
                 target.type,
@@ -65,6 +67,7 @@ class TargetRepository:
                 json.dumps(target.config),
                 1 if target.enabled else 0,
                 target.description,
+                1 if target.is_favorite else 0,
                 datetime.utcnow().isoformat(),
                 target.id
             ))
@@ -74,7 +77,7 @@ class TargetRepository:
         """List all targets."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM targets ORDER BY name")
+            cursor.execute("SELECT * FROM targets ORDER BY is_favorite DESC, name")
             rows = cursor.fetchall()
             
             return [
@@ -84,7 +87,8 @@ class TargetRepository:
                     name=row['name'],
                     config=json.loads(row['config']),
                     enabled=bool(row['enabled']),
-                    description=row['description']
+                    description=row['description'],
+                    is_favorite=bool(row.get('is_favorite', 0))
                 )
                 for row in rows
             ]
