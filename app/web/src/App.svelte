@@ -16,6 +16,7 @@
   let selectedProfile = '';
   let selectedTarget = '';
   let scanFilename = '';
+  let webhookUrl = '';
   let selectedPrinter = '';
   let printCopies = 1;
   let printFile = null;
@@ -45,10 +46,10 @@
     { label: 'History', href: '#history' }
   ];
 
-  const quickProfiles = [
-    { name: 'Color @300 DPI', description: 'PDF to target' },
-    { name: 'Grayscale @150 DPI', description: 'Lightweight PDF' },
-    { name: 'Photo @600 DPI', description: 'High quality JPEG' }
+  let quickProfiles = [
+    { id: 'color_300_pdf', name: 'Color @300 DPI', description: 'PDF to target' },
+    { id: 'gray_150_pdf', name: 'Grayscale @150 DPI', description: 'Lightweight PDF' },
+    { id: 'photo_600_jpeg', name: 'Photo @600 DPI', description: 'High quality JPEG' }
   ];
 
   onMount(() => {
@@ -81,6 +82,20 @@
     // Load other data in parallel
     loadTargets();
     loadHistory();
+    loadProfiles();
+  }
+  
+  async function loadProfiles() {
+    try {
+      const response = await fetch(`${API_BASE}/scan/profiles`);
+      if (response.ok) {
+        quickProfiles = await response.json();
+        console.log('Loaded profiles from API:', quickProfiles.length);
+      }
+    } catch (error) {
+      console.error('Failed to load profiles:', error);
+      // Keep default profiles on error
+    }
   }
 
   async function loadDevices() {
@@ -156,15 +171,22 @@
     }
 
     try {
+      const payload = {
+        device_id: selectedScanner,
+        profile_id: selectedProfile || quickProfiles[0].id,
+        target_id: selectedTarget,
+        filename_prefix: scanFilename || 'scan'
+      };
+      
+      // Add webhook_url if provided
+      if (webhookUrl && webhookUrl.trim()) {
+        payload.webhook_url = webhookUrl.trim();
+      }
+      
       const response = await fetch(`${API_BASE}/scan/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          device_id: selectedScanner,
-          profile_id: selectedProfile || quickProfiles[0].id,
-          target_id: selectedTarget,
-          filename_prefix: scanFilename || 'scan'
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
@@ -553,7 +575,10 @@
         <h3 class="mt">Quick profiles</h3>
         <div class="chip-row">
           {#each quickProfiles as profile}
-            <div class="chip">{profile.name}</div>
+            <div class="chip" title={profile.description || ''}>
+              {profile.name}
+              {#if profile.source === 'ADF'}<span style="color: var(--primary); margin-left: 4px;">📄</span>{/if}
+            </div>
           {/each}
         </div>
       </div>
@@ -573,7 +598,10 @@
           <label for="profile-select">Profile</label>
           <select id="profile-select" bind:value={selectedProfile}>
             {#each quickProfiles as profile}
-              <option value={profile.name}>{profile.name}</option>
+              <option value={profile.id}>
+                {profile.name}
+                {#if profile.source === 'ADF'}🆕 Multi-page{/if}
+              </option>
             {/each}
           </select>
           <label for="target-select">Target</label>
@@ -592,6 +620,17 @@
             style="width: 100%; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;"
           />
           <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Leave empty for auto-generated name (scan_UUID)</p>
+          
+          <label for="webhook-input">🆕 Webhook URL (optional)</label>
+          <input 
+            id="webhook-input" 
+            type="url" 
+            bind:value={webhookUrl} 
+            placeholder="https://hooks.slack.com/services/..." 
+            style="width: 100%; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;"
+          />
+          <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Get notified when scan completes (Slack, Discord, etc.)</p>
+          
           <button class="primary block" on:click={startScan}>Start scan</button>
         </div>
       </div>
