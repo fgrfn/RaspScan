@@ -224,14 +224,43 @@
     }
   }
 
+  async function removeTarget(targetId) {
+    if (!confirm(`Remove target "${targetId}"?`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE}/targets/${targetId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        await loadData();
+        alert('✅ Target removed successfully');
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        alert(`❌ Failed to remove target: ${errorData.detail || response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Remove target error:', error);
+      alert(`❌ Failed to remove target: ${error.message}`);
+    }
+  }
+
   async function discoverPrinters() {
     isDiscovering = true;
     try {
-      const response = await fetch(`${API_BASE}/printers/discover`);
+      // Use new unified devices endpoint
+      const response = await fetch(`${API_BASE}/devices/discover`);
       if (response.ok) {
-        discoveredDevices = await response.json();
+        const allDevices = await response.json();
+        
+        // Filter to only show printers (not scanners)
+        discoveredDevices = allDevices.filter(device => device.device_type === 'printer');
         lastDiscoveryTime = new Date();
-        console.log('Discovery complete:', discoveredDevices.length, 'devices found');
+        
+        console.log('Discovery complete:', discoveredDevices.length, 'printers found');
+        console.log('All devices:', allDevices.length);
       } else {
         const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
         alert(`Failed to discover printers: ${error.detail || response.statusText}`);
@@ -246,28 +275,33 @@
 
   async function addDiscoveredPrinter(device) {
     try {
-      const response = await fetch(`${API_BASE}/printers/add`, {
+      // Use new unified devices endpoint
+      const response = await fetch(`${API_BASE}/devices/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           uri: device.uri,
           name: device.name,
-          description: `${device.type} - ${device.model}`
+          device_type: 'printer',
+          make: device.make,
+          model: device.model,
+          connection_type: device.connection_type,
+          description: `${device.connection_type} - ${device.model || device.name}`
         })
       });
 
       if (response.ok) {
         await loadData();
-        // Refresh discovery to update "configured" status
+        // Refresh discovery to update "already_added" status
         await discoverPrinters();
-        alert(`Printer "${device.name}" added successfully`);
+        alert(`✅ Printer "${device.name}" added successfully`);
       } else {
         const error = await response.json();
-        alert(`Failed to add printer: ${error.detail || 'Unknown error'}`);
+        alert(`❌ Failed to add printer: ${error.detail || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Add printer error:', error);
-      alert(`Failed to add printer: ${error.message || 'Network error'}`);
+      alert(`❌ Failed to add printer: ${error.message || 'Network error'}`);
     }
   }
 
@@ -452,10 +486,13 @@
         {:else}
           <ul class="list">
             {#each targets as target}
-              <li>
-                <div class="list-title">{target.name}</div>
-                <div class="muted">{target.type}: {target.config?.connection || 'N/A'}</div>
-                <span class="badge {target.enabled ? 'success' : 'warning'}">{target.enabled ? 'Enabled' : 'Disabled'}</span>
+              <li style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="flex: 1;">
+                  <div class="list-title">{target.name}</div>
+                  <div class="muted">{target.type}: {target.config?.connection || 'N/A'}</div>
+                  <span class="badge {target.enabled ? 'success' : 'warning'}">{target.enabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <button class="danger small" on:click={() => removeTarget(target.id)}>Remove</button>
               </li>
             {/each}
           </ul>
@@ -544,17 +581,17 @@
               <li>
                 <div class="list-title">{device.name}</div>
                 <div class="muted">
-                  {device.type}
-                  {#if device.configured}
-                    <span class="badge success" style="margin-left: 0.5rem;">✓ Configured</span>
+                  {device.connection_type || device.type}
+                  {#if device.already_added}
+                    <span class="badge success" style="margin-left: 0.5rem;">✓ Already Added</span>
                   {:else}
-                    <span class="badge warning" style="margin-left: 0.5rem;">Not Added</span>
+                    <span class="badge warning" style="margin-left: 0.5rem;">Not Added Yet</span>
                   {/if}
                 </div>
                 <div class="muted small" style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
                   {device.uri}
                 </div>
-                {#if !device.configured}
+                {#if !device.already_added}
                   <button class="primary small" on:click={() => addDiscoveredPrinter(device)}>Add Printer</button>
                 {:else}
                   <button class="ghost small" disabled>Already Added</button>
