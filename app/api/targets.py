@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import time
 
 from app.core.targets.manager import TargetManager
-from app.core.targets.models import TargetRecord
+from app.core.targets.models import TargetConfig
 
 router = APIRouter()
 
