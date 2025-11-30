@@ -482,7 +482,10 @@
           <select id="scanner-select" bind:value={selectedScanner}>
             <option value="">-- Select scanner --</option>
             {#each scanners as scanner}
-              <option value={scanner.id}>{scanner.name}</option>
+              <option value={scanner.id}>
+                {scanner.name}
+                {#if scanner.connection_type && scanner.connection_type.includes('eSCL')}⭐ Recommended{/if}
+              </option>
             {/each}
           </select>
           <label for="profile-select">Profile</label>
