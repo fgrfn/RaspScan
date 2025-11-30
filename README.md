@@ -1,6 +1,6 @@
-# RaspScan
+# RaspScan - Scan Hub
 
-RaspScan is a Raspberry Pi-based scan and print server that centralizes scanning for devices without physical scan buttons (e.g., HP Envy 6400) and exposes AirPrint/IPP printing via CUPS.
+RaspScan is a Raspberry Pi-based scan server that centralizes scanning for network and USB devices. Trigger scans remotely via API or web interface and automatically route scanned documents to network targets (SMB shares, email, webhooks).
 
 ## Contents
 - `docs/architecture.md` — system architecture, API overview, security model.
@@ -17,7 +17,7 @@ RaspScan is a Raspberry Pi-based scan and print server that centralizes scanning
 2. If you prefer manual setup, edit and copy `installer/raspscan.service` to `/etc/systemd/system/` and adjust `User`, `WorkingDirectory`, and paths to your deployment location, then enable it with `sudo systemctl enable --now raspscan`.
 
 ## Quick Start (manual)
-1. Install dependencies: `sudo apt install cups cups-browsed avahi-daemon sane-utils sane-airscan python3-venv smbclient`.
+1. Install dependencies: `sudo apt install cups cups-browsed avahi-daemon sane-utils sane-airscan python3-venv smbclient imagemagick`.
 2. Create Python virtualenv and install API requirements: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`.
 3. Run backend: `uvicorn app.main:app --reload`.
 4. On first start, a default admin user is created (username: `admin`, password: `admin`).
@@ -83,9 +83,10 @@ RaspScan uses SQLite for data persistence:
 
 Stored data:
 - User accounts and sessions
-- Job history (scans and prints)
-- Target configurations (SMB, SFTP, etc.)
-- Scan profiles
+- Job history (scan jobs)
+- Target configurations (SMB, SFTP, email, webhooks)
+- Device configurations (manually added scanners)
+- Scan profiles with quality settings
 
 ### Backup
 ```bash
@@ -109,29 +110,81 @@ npm run dev
 
 Build assets with `npm run build`; serve the resulting `dist/` directory via Caddy/nginx or mount it as static files in the FastAPI app.
 
-## Printer Setup
+## Scanner Setup
 
 ### Auto-Discovery (Recommended)
-RaspScan automatically detects:
-- **USB Printers:** Connected to any USB port (no need to specify which port)
-- **Wireless Printers:** AirPrint/IPP devices on the local network (via DNS-SD/mDNS)
+RaspScan automatically detects scanners via SANE:
+- **USB Scanners:** Connected via any USB port
+- **Network Scanners:** eSCL/AirScan devices on the local network
+- **Multi-function Devices:** Devices supporting both print and scan
 
-Use the Settings page in the web UI or the API endpoint:
+Discovery endpoint:
 ```bash
-curl http://localhost:8000/api/v1/printers/discover
+curl http://localhost:8000/api/v1/devices/discover
 ```
 
 ### How It Works
-- **USB Detection:** CUPS automatically detects USB printers when plugged in. The system identifies manufacturer, model, and creates a device URI (e.g., `usb://HP/ENVY%206400`).
-- **Wireless Detection:** Uses Avahi/mDNS to discover network printers advertising AirPrint/IPP services.
-- **Scanner vs Printer:** Multi-function devices (like HP Envy 6400) appear in both printer and scanner lists if they support both protocols. Wireless scanners use eSCL/AirScan (SANE backend), while printers use IPP/AirPrint.
+- **USB Detection:** SANE backends detect USB scanners (HPAIO, EPSON, etc.)
+- **Network Detection:** Uses eSCL/AirScan protocol for wireless scanners
+- **Duplicate Filtering:** Automatically prefers eSCL over legacy protocols for best compatibility
+- **Status Monitoring:** Scanner availability cached (30s TTL) for fast UI updates
 
-### Adding Printers
-1. Click "Discover Printers" in Settings
+### Adding Scanners
+1. Click "Discover Scanners" in the Scan section
 2. Select detected device and click "Add"
-3. CUPS automatically selects the appropriate driver (IPP Everywhere for modern printers)
+3. Scanner is saved to database for future use
 
-For manual setup, use URIs like:
-- USB: `usb://HP/ENVY%206400`
-- Network: `ipp://printer.local/ipp/print`
-- AirPrint: `dnssd://HP%20Envy%206400._ipp._tcp.local/`
+### Scan Profiles
+Optimized profiles for different use cases:
+- **Document @200 DPI (Gray):** Smallest size, best for text (~100-300 KB/page)
+- **Color @300 DPI:** Standard quality for mixed content (~300-600 KB/page)
+- **Grayscale @150 DPI:** Fast scans, very small files (~80-200 KB/page)
+- **Photo @600 DPI:** High quality for photos (~1-3 MB/page)
+
+### Compression
+All PDFs are automatically compressed using JPEG compression:
+- Quality settings: 75-95% depending on profile
+- Reduces file sizes by 90-98% vs uncompressed TIFF
+- Empty A4 page: ~50-100 KB (vs 33+ MB uncompressed)
+
+## Scan Targets
+
+Configure destinations for scanned documents:
+
+### SMB/CIFS Share
+```bash
+curl -X POST http://localhost:8000/api/v1/targets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "NAS Documents",
+    "type": "SMB",
+    "config": {
+      "host": "//nas.local/scans",
+      "username": "scanner",
+      "password": "secret"
+    }
+  }'
+```
+
+### Email
+```bash
+curl -X POST http://localhost:8000/api/v1/targets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Email to Archive",
+    "type": "EMAIL",
+    "config": {
+      "to": "archive@example.com",
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "smtp_user": "scanner@example.com",
+      "smtp_password": "app-password"
+    }
+  }'
+```
+
+### Connection Testing
+All targets are automatically tested before saving:
+```bash
+curl -X POST http://localhost:8000/api/v1/targets/{target_id}/test
+```
