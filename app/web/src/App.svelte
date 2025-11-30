@@ -277,12 +277,12 @@
       });
 
       if (response.ok) {
-        await loadData();
+        alert('✅ Target saved successfully');
         targetName = '';
         targetConnection = '';
         targetUsername = '';
         targetPassword = '';
-        alert('✅ Target saved successfully');
+        await loadTargets();
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         console.error('Failed to save target:', response.status, errorData);
