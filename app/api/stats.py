@@ -233,15 +233,17 @@ async def get_target_statistics():
 
 @router.get("/hourly")
 async def get_hourly_distribution():
-    """Get scan distribution by hour of day."""
+    """Get scan distribution by hour of day (in local time)."""
     db = get_db()
     
     with db.get_connection() as conn:
         cursor = conn.cursor()
         
+        # SQLite stores times as UTC, so we need to convert to local time
+        # Using 'localtime' modifier to convert from UTC to local time
         cursor.execute("""
             SELECT 
-                strftime('%H', created_at) as hour,
+                strftime('%H', created_at, 'localtime') as hour,
                 COUNT(*) as count
             FROM jobs 
             WHERE job_type = 'scan'

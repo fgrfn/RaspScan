@@ -84,6 +84,7 @@
       running: '🔄 Running',
       waiting: '⏸️ Waiting',
       done: '✅ Done',
+      completed: 'completed',
       failed: '❌ Failed',
       skipped: '⏸️ Skipped',
       retry: '🔄 Retry',
@@ -157,6 +158,7 @@
       lastUsed: 'Last Used',
       date: 'Date',
       total: 'Total',
+      deliveriesLabel: 'Deliveries',
       clearHistory: 'Clear History',
       clearHistoryConfirm: 'Delete all completed jobs from history? This cannot be undone.',
       deleteJob: 'Delete Job',
@@ -262,6 +264,7 @@
       running: '🔄 Läuft',
       waiting: '⏸️ Wartet',
       done: '✅ Fertig',
+      completed: 'abgeschlossen',
       failed: '❌ Fehlgeschlagen',
       skipped: '⏸️ Übersprungen',
       retry: '🔄 Wiederholen',
@@ -335,6 +338,7 @@
       lastUsed: 'Zuletzt verwendet',
       date: 'Datum',
       total: 'Gesamt',
+      deliveriesLabel: 'Zustellungen',
       clearHistory: 'Verlauf löschen',
       clearHistoryConfirm: 'Alle abgeschlossenen Aufträge aus dem Verlauf löschen? Dies kann nicht rückgängig gemacht werden.',
       deleteJob: 'Auftrag löschen',
@@ -2213,7 +2217,7 @@
                 <div style="flex: 1;">
                   <div class="list-title">{target.target}</div>
                   <div class="muted">
-                    Deliveries: {target.total_deliveries} · 
+                    {t.deliveriesLabel}: {target.total_deliveries} · 
                     {t.successful}: {target.successful} ({target.success_rate}%) · 
                     {t.lastUsed}: {new Date(target.last_used).toLocaleDateString()}
                   </div>
@@ -2285,7 +2289,7 @@
             <span style="font-size: 0.875rem;">{new Date(job.created_at).toLocaleString()}</span>
             <div>
               <span class={`badge ${job.status === 'completed' && !job.message ? 'success' : job.status === 'failed' ? 'danger' : job.message ? 'warning' : 'warning'}`}>
-                {job.status === 'completed' && job.message ? '⚠️ Upload failed' : job.status}
+                {job.status === 'completed' && job.message ? t.uploadFailed : job.status === 'completed' ? t.completed : job.status === 'failed' ? t.failed : job.status}
               </span>
               {#if job.message}
                 <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--danger); padding: 0.5rem; background: rgba(255, 100, 100, 0.1); border-radius: 4px; border: 1px solid rgba(255, 100, 100, 0.3);">
