@@ -39,8 +39,18 @@ async def list_targets():
 
 
 @router.post("/", response_model=Target)
-async def create_target(target: Target):
-    """Create a new target configuration."""
+async def create_target(target: Target, validate: bool = True):
+    """
+    Create a new target configuration.
+    
+    **Connection is automatically tested before saving!**
+    
+    Query params:
+    - validate: Test connection before saving (default: true)
+    
+    If validation fails, target will NOT be saved and error is returned.
+    Set validate=false to skip connection test (not recommended).
+    """
     try:
         # Convert Pydantic model to TargetConfig
         target_config = TargetConfig(
@@ -52,7 +62,7 @@ async def create_target(target: Target):
             description=target.description
         )
         
-        result = TargetManager().create_target(target_config)
+        result = TargetManager().create_target(target_config, validate=validate)
         
         return Target(
             id=result.id,
@@ -63,12 +73,21 @@ async def create_target(target: Target):
             description=result.description
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to create target: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/{target_id}", response_model=Target)
-async def update_target(target_id: str, target: Target):
-    """Update an existing target configuration."""
+async def update_target(target_id: str, target: Target, validate: bool = True):
+    """
+    Update an existing target configuration.
+    
+    **Connection is automatically tested before updating!**
+    
+    Query params:
+    - validate: Test connection before saving (default: true)
+    
+    If validation fails, target will NOT be updated and error is returned.
+    """
     try:
         # Convert Pydantic model to TargetConfig
         target_config = TargetConfig(
@@ -80,7 +99,7 @@ async def update_target(target_id: str, target: Target):
             description=target.description
         )
         
-        result = TargetManager().update_target(target_id, target_config)
+        result = TargetManager().update_target(target_id, target_config, validate=validate)
         
         return Target(
             id=result.id,
@@ -91,7 +110,7 @@ async def update_target(target_id: str, target: Target):
             description=result.description
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to update target: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/{target_id}")

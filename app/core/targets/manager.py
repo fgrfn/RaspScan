@@ -22,15 +22,134 @@ class TargetManager:
     def list_targets(self) -> List[TargetConfig]:
         return self.repo.list()
 
-    def create_target(self, target: TargetConfig) -> TargetConfig:
+    def create_target(self, target: TargetConfig, validate: bool = True) -> TargetConfig:
+        """
+        Create a new target.
+        
+        Args:
+            target: Target configuration
+            validate: If True, test connection before saving (default: True)
+        
+        Raises:
+            Exception: If validation fails
+        """
+        if validate:
+            # Test connection before saving
+            validation_result = self._validate_target_config(target)
+            if validation_result['status'] != 'ok':
+                raise Exception(
+                    f"Connection test failed: {validation_result.get('message', 'Unable to connect')}"
+                )
+        
         return self.repo.create(target)
 
-    def update_target(self, target_id: str, target: TargetConfig) -> TargetConfig:
+    def update_target(self, target_id: str, target: TargetConfig, validate: bool = True) -> TargetConfig:
+        """
+        Update an existing target.
+        
+        Args:
+            target_id: Target ID to update
+            target: New target configuration
+            validate: If True, test connection before saving (default: True)
+        
+        Raises:
+            Exception: If validation fails
+        """
         target.id = target_id  # Ensure ID matches
+        
+        if validate:
+            # Test connection before updating
+            validation_result = self._validate_target_config(target)
+            if validation_result['status'] != 'ok':
+                raise Exception(
+                    f"Connection test failed: {validation_result.get('message', 'Unable to connect')}"
+                )
+        
         return self.repo.update(target)
 
     def delete_target(self, target_id: str) -> None:
         self.repo.delete(target_id)
+    
+    def _validate_target_config(self, target: TargetConfig) -> dict:
+        """
+        Validate target configuration by testing connectivity.
+        
+        Returns:
+            dict with 'status' and optional 'message'
+        """
+        try:
+            if target.type == 'SMB':
+                # Test SMB connectivity with smbclient
+                username = target.config.get('username', 'guest')
+                password = target.config.get('password', '')
+                connection = target.config.get('connection', '')
+                
+                if not connection:
+                    return {"status": "error", "message": "Connection string is required"}
+                
+                result = subprocess.run(
+                    ['smbclient', '-L', connection, '-U', f"{username}%{password}", '-N'],
+                    capture_output=True,
+                    timeout=10,
+                    text=True
+                )
+                
+                if result.returncode == 0:
+                    return {"status": "ok"}
+                else:
+                    error_msg = result.stderr.strip() if result.stderr else "Connection failed"
+                    return {"status": "error", "message": error_msg}
+                
+            elif target.type == 'SFTP':
+                # Test SFTP with ssh
+                host = target.config.get('connection', '')
+                if not host:
+                    return {"status": "error", "message": "Host is required"}
+                
+                result = subprocess.run(
+                    ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', host, 'exit'],
+                    capture_output=True,
+                    timeout=10,
+                    text=True
+                )
+                
+                if result.returncode == 0:
+                    return {"status": "ok"}
+                else:
+                    return {"status": "error", "message": "SSH connection failed. Check host and credentials."}
+                
+            elif target.type == 'Email':
+                # Test SMTP connection
+                smtp_host = target.config.get('smtp_host', 'localhost')
+                smtp_port = target.config.get('smtp_port', 587)
+                
+                server = smtplib.SMTP(smtp_host, smtp_port, timeout=5)
+                server.quit()
+                return {"status": "ok"}
+                
+            elif target.type in ['Paperless-ngx', 'Webhook']:
+                # Test HTTP endpoint
+                url = target.config.get('connection', '')
+                if not url:
+                    return {"status": "error", "message": "URL is required"}
+                
+                response = requests.head(url, timeout=5)
+                
+                if response.status_code < 500:
+                    return {"status": "ok"}
+                else:
+                    return {"status": "error", "message": f"Server error: {response.status_code}"}
+                
+            else:
+                # Unknown type - skip validation
+                return {"status": "ok"}
+                
+        except subprocess.TimeoutExpired:
+            return {"status": "error", "message": "Connection timeout - server not reachable"}
+        except FileNotFoundError as e:
+            return {"status": "error", "message": f"Required tool not installed: {str(e)}"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
     def test_target(self, target_id: str) -> dict:
         """Test connectivity to a target."""
