@@ -1,6 +1,6 @@
-# RaspScan - Scan Hub
+# Scan2Target - Scan Hub
 
-RaspScan is a network scan server that centralizes scanning for network and USB devices. Trigger scans remotely via API or web interface and automatically route scanned documents to network targets (SMB shares, email, webhooks). Works on Linux servers, Raspberry Pi, and virtual machines.
+Scan2Target is a network scan server that centralizes scanning for network and USB devices. Trigger scans remotely via API or web interface and automatically route scanned documents to network targets (SMB shares, email, webhooks, cloud storage). Works on Linux servers, Raspberry Pi, and virtual machines.
 
 ## Contents
 - `docs/architecture.md` — system architecture, API overview, security model.
@@ -13,8 +13,8 @@ RaspScan is a network scan server that centralizes scanning for network and USB 
 ### Automated Installation (Recommended)
 1. Clone the repository and run the installer:
    ```bash
-   git clone https://github.com/yourusername/RaspScan.git
-   cd RaspScan
+   git clone https://github.com/yourusername/Scan2Target.git
+   cd Scan2Target
    sudo ./installer/install.sh
    ```
 
@@ -27,7 +27,7 @@ The installer automatically:
 - ✅ Configures automatic cleanup cron job (daily at 3 AM)
 - ✅ Creates database and default admin user
 
-2. Access RaspScan at: `http://YOUR_SERVER_IP` (no port needed - runs on port 80)
+2. Access Scan2Target at: `http://YOUR_SERVER_IP` (no port needed - runs on port 80)
 
 ### Manual Setup
 If you prefer manual installation:
@@ -71,7 +71,7 @@ npm run dev
 ## Authentication
 
 ### Default User
-On first startup, RaspScan creates a default admin user:
+On first startup, Scan2Target creates a default admin user:
 - **Username:** `admin`
 - **Password:** `admin`
 - **⚠️ SECURITY:** Change this password immediately after first login!
@@ -121,9 +121,9 @@ export RASPSCAN_REQUIRE_AUTH=true
 
 ## Database & Persistence
 
-RaspScan uses SQLite for data persistence:
-- **Database file:** `raspscan.db` (created automatically)
-- **Location:** Current working directory or set via `RASPSCAN_DATABASE_PATH`
+Scan2Target uses SQLite for data persistence:
+- **Database file:** `scan2target.db` (created automatically)
+- **Location:** Current working directory or set via `SCAN2TARGET_DATABASE_PATH`
 
 Stored data:
 - User accounts and sessions
@@ -135,10 +135,10 @@ Stored data:
 ### Backup
 ```bash
 # Backup database
-cp raspscan.db raspscan.db.backup
+cp scan2target.db scan2target.db.backup
 
 # Or use SQLite backup
-sqlite3 raspscan.db ".backup raspscan_backup.db"
+sqlite3 scan2target.db ".backup scan2target_backup.db"
 ```
 
 For HTTPS, place RaspScan behind Caddy or nginx with TLS termination and enable IP allowlists via configuration.
@@ -170,7 +170,7 @@ Build assets with `npm run build`; serve the resulting `dist/` directory via Cad
 ## Scanner Setup
 
 ### Auto-Discovery (Recommended)
-RaspScan automatically detects scanners via SANE:
+Scan2Target automatically detects scanners via SANE:
 - **USB Scanners:** Connected via any USB port
 - **Network Scanners:** eSCL/AirScan devices on the local network
 - **Multi-function Devices:** Devices supporting both print and scan
@@ -214,7 +214,7 @@ All PDFs are automatically compressed using JPEG compression:
 
 ## Scan Targets
 
-Configure destinations for scanned documents. RaspScan supports 9 target types:
+Configure destinations for scanned documents. Scan2Target supports 9 target types:
 
 ### Supported Target Types
 1. **SMB/CIFS** - Windows/Samba network shares
@@ -415,7 +415,7 @@ Or use the Web UI:
 ### Advanced Features
 
 ### Real-Time Updates (WebSocket)
-RaspScan supports WebSocket connections for real-time job status updates:
+Scan2Target supports WebSocket connections for real-time job status updates:
 
 ```javascript
 const ws = new WebSocket('ws://YOUR_SERVER_IP/api/v1/ws');
@@ -475,7 +475,7 @@ Automatic thumbnail generation and display:
 - Stored temporarily with scan output (cleaned up after 7 days)
 
 ### Progressive Web App (PWA)
-Install RaspScan as native app:
+Install Scan2Target as native app:
 1. Open web interface in browser
 2. Click "Install" prompt or browser menu → "Install App"
 3. Launch from home screen/desktop
@@ -499,7 +499,7 @@ Profiles support automatic optimization:
 ## Maintenance & Cleanup
 
 ### Automatic Cleanup
-RaspScan automatically manages disk space:
+Scan2Target automatically manages disk space:
 - **Successful scans:** Files deleted immediately after upload
 - **Thumbnails:** Kept 7 days for UI preview (10-50 KB each)
 - **Failed uploads:** Kept 30 days for manual retry
@@ -508,7 +508,7 @@ RaspScan automatically manages disk space:
 ### Manual Cleanup
 ```bash
 # Run cleanup manually
-cd /home/florian/RaspScan
+cd /opt/scan2target
 python3 -m app.core.cleanup
 
 # Check disk usage
@@ -520,7 +520,7 @@ curl -X POST http://localhost/api/v1/maintenance/cleanup
 
 ### View Cleanup Logs
 ```bash
-tail -f /var/log/raspscan-cleanup.log
+tail -f /var/log/scan2target-cleanup.log
 ```
 
 ### Upload Retry
@@ -543,27 +543,27 @@ If upload fails (e.g., network issue):
 
 ```bash
 # Start service
-sudo systemctl start raspscan
+sudo systemctl start scan2target
 
 # Stop service
-sudo systemctl stop raspscan
+sudo systemctl stop scan2target
 
 # Restart service
-sudo systemctl restart raspscan
+sudo systemctl restart scan2target
 
 # View status
-sudo systemctl status raspscan
+sudo systemctl status scan2target
 
 # View logs
-sudo journalctl -u raspscan -f
+sudo journalctl -u scan2target -f
 
 # Disable auto-start
-sudo systemctl disable raspscan
+sudo systemctl disable scan2target
 ```
 
 ## Internationalization (i18n)
 
-RaspScan Web UI supports multiple languages:
+Scan2Target Web UI supports multiple languages:
 
 **Available Languages:**
 - 🇬🇧 English (EN) - Default
@@ -589,7 +589,7 @@ Then add the language option to NavBar.svelte dropdown.
 
 ## Home Assistant Integration
 
-RaspScan's open API makes integration easy:
+Scan2Target's open API makes integration easy:
 
 ```yaml
 # configuration.yaml
@@ -614,7 +614,7 @@ button:
 
 sensor:
   - platform: rest
-    name: RaspScan Active Jobs
+    name: Scan2Target Active Jobs
     resource: "http://SERVER_IP/api/v1/history"
     value_template: >
       {{ value_json | selectattr('status', 'in', ['queued', 'running']) | list | length }}

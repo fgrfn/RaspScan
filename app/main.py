@@ -1,4 +1,4 @@
-"""RaspScan FastAPI application entrypoint."""
+"""Scan2Target FastAPI application entrypoint."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -14,17 +14,17 @@ from app.core.init_db import init_database
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    print("Starting RaspScan...")
+    print("Starting Scan2Target...")
     init_database()
     yield
     # Shutdown
-    print("Shutting down RaspScan...")
+    print("Shutting down Scan2Target...")
 
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
-        title="RaspScan",
+        title="Scan2Target",
         version="0.1.0",
         lifespan=lifespan
     )
@@ -77,7 +77,7 @@ def create_app() -> FastAPI:
         @app.get("/")
         async def serve_root():
             return {
-                "message": "RaspScan API",
+                "message": "Scan2Target API",
                 "docs": "/docs",
                 "health": "/health",
                 "note": "Web UI not found. Run 'cd app/web && npm run build' or 'npm run dev'"

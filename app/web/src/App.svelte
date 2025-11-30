@@ -11,7 +11,7 @@
   
   const translations = {
     en: {
-      brand: 'RaspScan',
+      brand: 'Scan2Target',
       dashboard: 'Dashboard',
       scan: 'Scan',
       activeScansMenu: 'Active Scans',
@@ -167,7 +167,7 @@
       webdavPathPlaceholder: '/Scans'
     },
     de: {
-      brand: 'RaspScan',
+      brand: 'Scan2Target',
       dashboard: 'Dashboard',
       scan: 'Scannen',
       activeScansMenu: 'Aktive Scans',

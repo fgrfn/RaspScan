@@ -11,12 +11,12 @@ except ImportError:
 
 class Settings(BaseSettings):
     # Database
-    database_url: str = "sqlite:///./raspscan.db"
-    database_path: str = "raspscan.db"
+    database_url: str = "sqlite:///./scan2target.db"
+    database_path: str = "scan2target.db"
     
     # Paths
-    data_dir: Path = Path("/data/raspscan")
-    secret_key_path: Path = Path("/etc/raspscan/secret.key")
+    data_dir: Path = Path("/data/scan2target")
+    secret_key_path: Path = Path("/etc/scan2target/secret.key")
     
     # Security
     allowed_subnets: list[str] = []
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["*"]  # Tighten in production
 
     class Config:
-        env_prefix = "RASPSCAN_"
+        env_prefix = "SCAN2TARGET_"
         env_file = ".env"
 
 

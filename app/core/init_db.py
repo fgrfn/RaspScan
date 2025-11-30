@@ -16,7 +16,7 @@ def init_database():
         auth_manager.register(
             username="admin",
             password="admin",  # CHANGE THIS IN PRODUCTION!
-            email="admin@raspscan.local",
+            email="admin@scan2target.local",
             is_admin=True
         )
         print("✓ Default admin user created: username='admin', password='admin'")
