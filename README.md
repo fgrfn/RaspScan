@@ -19,15 +19,15 @@ RaspScan is a Raspberry Pi-based scan server that centralizes scanning for netwo
    ```
 
 The installer automatically:
-- ✅ Installs system dependencies (SANE, CUPS, ImageMagick, Node.js)
+- ✅ Installs system dependencies (SANE, ImageMagick, Node.js)
 - ✅ Creates Python virtual environment
 - ✅ Installs Python dependencies
 - ✅ Builds Web UI production bundle
-- ✅ Sets up systemd service (auto-start on boot)
+- ✅ Sets up systemd service (auto-start on boot, standard HTTP port 80)
 - ✅ Configures automatic cleanup cron job (daily at 3 AM)
 - ✅ Creates database and default admin user
 
-2. Access RaspScan at: `http://YOUR_RASPBERRY_PI_IP`
+2. Access RaspScan at: `http://YOUR_RASPBERRY_PI_IP` (no port needed - runs on port 80)
 
 ### Manual Setup
 If you prefer manual installation:
@@ -143,9 +143,19 @@ sqlite3 raspscan.db ".backup raspscan_backup.db"
 
 For HTTPS, place RaspScan behind Caddy or nginx with TLS termination and enable IP allowlists via configuration.
 
-## Web UI (modern Svelte preview)
-The `app/web` directory now includes a modern Svelte + Vite single-page interface with glassmorphism styling. To run locally:
+## Web UI Features
 
+The `app/web` directory includes a modern Svelte + Vite single-page interface with:
+- **🌍 Multi-language support:** English and German (more languages easily added)
+- **📱 Responsive design:** Works on desktop, tablet, and mobile
+- **🎨 Modern glassmorphism styling**
+- **⭐ Favorites system:** Mark frequently used scanners and targets
+- **📊 Live scan preview:** Real-time thumbnails (50% size, click to expand)
+- **🔄 Upload retry:** One-click retry for failed uploads
+- **📈 Status tracking:** Separate scan and upload status indicators
+- **🚀 PWA support:** Install as native app
+
+To run locally:
 ```bash
 cd app/web
 npm install
@@ -201,7 +211,20 @@ All PDFs are automatically compressed using JPEG compression:
 
 ## Scan Targets
 
-Configure destinations for scanned documents:
+Configure destinations for scanned documents. RaspScan supports 5 target types:
+
+### Supported Target Types
+1. **SMB/CIFS** - Windows/Samba network shares
+2. **SFTP** - Secure file transfer via SSH
+3. **Email** - Send scans via SMTP
+4. **Paperless-ngx** - Document management system integration
+5. **Webhook** - Custom HTTP endpoints
+
+All targets support:
+- ⭐ Favorites (mark frequently used targets)
+- 🔍 Connection testing before save
+- 🔄 Automatic retry on upload failure (3 attempts with exponential backoff)
+- 📝 Detailed error messages
 
 ### SMB/CIFS Share
 ```bash
@@ -235,11 +258,57 @@ curl -X POST http://localhost/api/v1/targets \
   }'
 ```
 
+### SFTP Target
+```bash
+curl -X POST http://localhost/api/v1/targets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "SFTP Server",
+    "type": "SFTP",
+    "config": {
+      "connection": "user@server.example.com",
+      "remote_path": "/uploads/scans"
+    }
+  }'
+```
+
+### Paperless-ngx Integration
+```bash
+curl -X POST http://localhost/api/v1/targets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Paperless Archive",
+    "type": "Paperless-ngx",
+    "config": {
+      "connection": "http://paperless.local:8000",
+      "api_token": "your-api-token"
+    }
+  }'
+```
+
+### Webhook Target
+```bash
+curl -X POST http://localhost/api/v1/targets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Custom Webhook",
+    "type": "Webhook",
+    "config": {
+      "connection": "https://example.com/webhook"
+    }
+  }'
+```
+
 ### Connection Testing
 All targets are automatically tested before saving:
 ```bash
 curl -X POST http://localhost/api/v1/targets/{target_id}/test
 ```
+
+Or use the Web UI:
+1. Configure target details
+2. Click "Test & Save" to validate connection first
+3. Or click "Save without test" if server is temporarily offline
 
 ## Advanced Features
 
@@ -273,10 +342,12 @@ Webhook payload:
 ```
 
 ### Live Scan Previews
-Automatic thumbnail generation:
+Automatic thumbnail generation and display:
 - 400x400px preview created for each scan
+- Displayed at 50% size in Active Scans section
+- Click thumbnail to expand to 100% (click again to shrink)
 - Available in webhook notification metadata
-- Stored temporarily with scan output
+- Stored temporarily with scan output (cleaned up after 7 days)
 
 ### Progressive Web App (PWA)
 Install RaspScan as native app:
@@ -330,10 +401,18 @@ tail -f /var/log/raspscan-cleanup.log
 ### Upload Retry
 If upload fails (e.g., network issue):
 1. Scan completes successfully, file stored locally
-2. Error shown in History with "⚠️ Upload failed" badge
-3. Click "🔄 Retry Upload" button
+2. Error shown in History and Active Scans with separate status indicators:
+   - Scan: ✅ Done
+   - Upload: ❌ Failed
+3. Click "🔄 Retry" button in Active Scans or "🔄 Retry Upload" in History
 4. System attempts upload with 3 retries (exponential backoff: 2s, 4s, 8s)
 5. File deleted automatically after successful retry
+
+**Status Display:**
+- **During Scan:** Scan: 🔄 Running, Upload: ⏸️ Waiting
+- **Scan Failed:** Scan: ❌ Failed, Upload: ⏸️ Skipped
+- **Upload Failed:** Scan: ✅ Done, Upload: ❌ Failed (with Retry button)
+- **All Success:** Scan: ✅ Done, Upload: ✅ Done
 
 ## Service Management
 
@@ -356,6 +435,32 @@ sudo journalctl -u raspscan -f
 # Disable auto-start
 sudo systemctl disable raspscan
 ```
+
+## Internationalization (i18n)
+
+RaspScan Web UI supports multiple languages:
+
+**Available Languages:**
+- 🇬🇧 English (EN) - Default
+- 🇩🇪 German (DE)
+
+**Features:**
+- Language selector in top-right corner of navigation bar
+- Preference saved in browser localStorage
+- Instant language switching (no page reload)
+- All UI elements translated (navigation, buttons, status messages, etc.)
+
+**Adding New Languages:**
+Edit `app/web/src/App.svelte` and add your language to the `translations` object:
+```javascript
+const translations = {
+  en: { /* English translations */ },
+  de: { /* German translations */ },
+  fr: { /* Your French translations */ }
+};
+```
+
+Then add the language option to NavBar.svelte dropdown.
 
 ## Home Assistant Integration
 

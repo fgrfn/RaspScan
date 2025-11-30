@@ -6,6 +6,213 @@
 
   const API_BASE = '/api/v1';
 
+  // Language/i18n support
+  let currentLang = localStorage.getItem('raspscan_lang') || 'en';
+  
+  const translations = {
+    en: {
+      brand: 'RaspScan',
+      dashboard: 'Dashboard',
+      scan: 'Scan',
+      targets: 'Targets',
+      history: 'History',
+      heroTagline: 'Raspberry Pi · FastAPI · Svelte',
+      heroTitle: 'Central hub for scanning.',
+      heroDescription: 'Trigger scans on devices without physical buttons, and route files to SMB, email, Paperless-ngx, or webhooks.',
+      startScan: 'Start a scan',
+      liveStatus: 'Live status',
+      scannersFound: 'Scanners found',
+      todayScans: 'Today scans',
+      completedToday: 'Completed today',
+      activeJobs: 'Active jobs',
+      inProgress: 'In progress',
+      configuredScanners: 'Configured Scanners',
+      loadingScanners: '⏳ Loading scanners...',
+      noScannersConfigured: 'No scanners configured. Click "Discover Scanners" below to add.',
+      recommended: '⭐ Recommended',
+      online: 'online',
+      offline: 'offline',
+      removeFavorite: 'Remove from favorites',
+      addFavorite: 'Add to favorites',
+      remove: 'Remove',
+      scannerManagement: 'Scanner Management',
+      scannerManagementDesc: 'Discover and add USB/wireless scanners via SANE/eSCL. Scanners must be manually added - they are never added automatically.',
+      discoverScanners: 'Discover Scanners',
+      searching: 'Searching...',
+      lastScan: 'Last scan',
+      clickRefresh: 'Click "Discover" to refresh',
+      discoveredScanners: 'Discovered Scanners',
+      alreadyAdded: '✓ Already Added',
+      notAddedYet: 'Not Added Yet',
+      addScanner: 'Add Scanner',
+      noScannersFound: 'No scanners found. Make sure scanners are powered on and connected (USB or network).',
+      quickProfiles: 'Quick profiles',
+      launchScan: 'Launch a scan',
+      chooseScanner: 'Choose scanner',
+      selectScanner: '-- Select scanner --',
+      scanSource: '🆕 Scan Source',
+      flatbed: '📄 Flatbed (single page)',
+      adf: '📚 Document Feeder (ADF) - Multi-page',
+      adfDesc: 'ADF automatically scans all pages in the feeder',
+      profile: 'Profile',
+      target: 'Target',
+      selectTarget: '-- Select target --',
+      filename: 'Filename (optional)',
+      filenamePlaceholder: 'e.g. invoice_2025',
+      filenameDesc: 'Leave empty for auto-generated name (scan_UUID)',
+      startScanButton: 'Start scan',
+      activeScans: 'Active Scans',
+      scansInProgress: 'Scans in progress',
+      mostRecentScan: 'Most recent scan',
+      noScansYet: 'No scans yet',
+      noScansDesc: 'No scans yet. Start your first scan above.',
+      scanStatus: 'Scan:',
+      uploadStatus: 'Upload:',
+      queued: '⏳ Queued',
+      running: '🔄 Running',
+      waiting: '⏸️ Waiting',
+      done: '✅ Done',
+      failed: '❌ Failed',
+      skipped: '⏸️ Skipped',
+      retry: '🔄 Retry',
+      device: 'Device',
+      started: 'Started',
+      completed: 'Completed',
+      deliveryTargets: 'Delivery targets',
+      loadingTargets: '⏳ Loading targets...',
+      noTargetsConfigured: 'No targets configured yet.',
+      enabled: 'Enabled',
+      disabled: 'Disabled',
+      test: '🔍 Test',
+      addTarget: 'Add target',
+      type: 'Type',
+      name: 'Name',
+      namePlaceholder: 'e.g. NAS scans',
+      connection: 'Connection',
+      connectionPlaceholder: '//nas/share or URL',
+      username: 'Username',
+      usernamePlaceholder: 'Network username',
+      password: 'Password',
+      passwordPlaceholder: 'Network password',
+      testAndSave: 'Test & Save',
+      saveWithoutTest: 'Save without test',
+      testSaveHint: '💡 "Test & Save" validates the connection before saving. Use "Save without test" if the server is temporarily offline.',
+      targetsSubtitle: 'Destinations for scanned documents.',
+      historySubtitle: 'Recent scan and print jobs.',
+      loadingHistory: '⏳ Loading history...',
+      noJobsHistory: 'No jobs in history yet.',
+      id: 'ID',
+      time: 'Time',
+      status: 'Status',
+      uploadFailed: '⚠️ Upload failed',
+      retryUpload: '🔄 Retry Upload'
+    },
+    de: {
+      brand: 'RaspScan',
+      dashboard: 'Dashboard',
+      scan: 'Scannen',
+      targets: 'Ziele',
+      history: 'Verlauf',
+      heroTagline: 'Raspberry Pi · FastAPI · Svelte',
+      heroTitle: 'Zentrale für Scannen.',
+      heroDescription: 'Starten Sie Scans auf Geräten ohne physische Tasten und leiten Sie Dateien an SMB, E-Mail, Paperless-ngx oder Webhooks weiter.',
+      startScan: 'Scan starten',
+      liveStatus: 'Live-Status',
+      scannersFound: 'Scanner gefunden',
+      todayScans: 'Heutige Scans',
+      completedToday: 'Heute abgeschlossen',
+      activeJobs: 'Aktive Aufträge',
+      inProgress: 'In Bearbeitung',
+      configuredScanners: 'Konfigurierte Scanner',
+      loadingScanners: '⏳ Scanner werden geladen...',
+      noScannersConfigured: 'Keine Scanner konfiguriert. Klicken Sie unten auf "Scanner suchen", um welche hinzuzufügen.',
+      recommended: '⭐ Empfohlen',
+      online: 'online',
+      offline: 'offline',
+      removeFavorite: 'Aus Favoriten entfernen',
+      addFavorite: 'Zu Favoriten hinzufügen',
+      remove: 'Entfernen',
+      scannerManagement: 'Scanner-Verwaltung',
+      scannerManagementDesc: 'USB/WLAN-Scanner über SANE/eSCL suchen und hinzufügen. Scanner müssen manuell hinzugefügt werden - sie werden nie automatisch hinzugefügt.',
+      discoverScanners: 'Scanner suchen',
+      searching: 'Suche läuft...',
+      lastScan: 'Letzte Suche',
+      clickRefresh: 'Klicken Sie auf "Suchen", um zu aktualisieren',
+      discoveredScanners: 'Gefundene Scanner',
+      alreadyAdded: '✓ Bereits hinzugefügt',
+      notAddedYet: 'Noch nicht hinzugefügt',
+      addScanner: 'Scanner hinzufügen',
+      noScannersFound: 'Keine Scanner gefunden. Stellen Sie sicher, dass Scanner eingeschaltet und verbunden sind (USB oder Netzwerk).',
+      quickProfiles: 'Schnellprofile',
+      launchScan: 'Scan starten',
+      chooseScanner: 'Scanner wählen',
+      selectScanner: '-- Scanner auswählen --',
+      scanSource: '🆕 Scan-Quelle',
+      flatbed: '📄 Flachbett (einzelne Seite)',
+      adf: '📚 Dokumenteneinzug (ADF) - Mehrere Seiten',
+      adfDesc: 'ADF scannt automatisch alle Seiten im Einzug',
+      profile: 'Profil',
+      target: 'Ziel',
+      selectTarget: '-- Ziel auswählen --',
+      filename: 'Dateiname (optional)',
+      filenamePlaceholder: 'z.B. rechnung_2025',
+      filenameDesc: 'Leer lassen für automatisch generierten Namen (scan_UUID)',
+      startScanButton: 'Scan starten',
+      activeScans: 'Aktive Scans',
+      scansInProgress: 'Scans werden ausgeführt',
+      mostRecentScan: 'Zuletzt gescannt',
+      noScansYet: 'Noch keine Scans',
+      noScansDesc: 'Noch keine Scans. Starten Sie Ihren ersten Scan oben.',
+      scanStatus: 'Scan:',
+      uploadStatus: 'Upload:',
+      queued: '⏳ Warteschlange',
+      running: '🔄 Läuft',
+      waiting: '⏸️ Wartet',
+      done: '✅ Fertig',
+      failed: '❌ Fehlgeschlagen',
+      skipped: '⏸️ Übersprungen',
+      retry: '🔄 Wiederholen',
+      device: 'Gerät',
+      started: 'Gestartet',
+      completed: 'Abgeschlossen',
+      deliveryTargets: 'Lieferziele',
+      loadingTargets: '⏳ Ziele werden geladen...',
+      noTargetsConfigured: 'Noch keine Ziele konfiguriert.',
+      enabled: 'Aktiviert',
+      disabled: 'Deaktiviert',
+      test: '🔍 Testen',
+      addTarget: 'Ziel hinzufügen',
+      type: 'Typ',
+      name: 'Name',
+      namePlaceholder: 'z.B. NAS Scans',
+      connection: 'Verbindung',
+      connectionPlaceholder: '//nas/freigabe oder URL',
+      username: 'Benutzername',
+      usernamePlaceholder: 'Netzwerk-Benutzername',
+      password: 'Passwort',
+      passwordPlaceholder: 'Netzwerk-Passwort',
+      testAndSave: 'Testen & Speichern',
+      saveWithoutTest: 'Ohne Test speichern',
+      testSaveHint: '💡 "Testen & Speichern" validiert die Verbindung vor dem Speichern. Verwenden Sie "Ohne Test speichern", wenn der Server vorübergehend offline ist.',
+      targetsSubtitle: 'Ziele für gescannte Dokumente.',
+      historySubtitle: 'Letzte Scan- und Druckaufträge.',
+      loadingHistory: '⏳ Verlauf wird geladen...',
+      noJobsHistory: 'Noch keine Aufträge im Verlauf.',
+      id: 'ID',
+      time: 'Zeit',
+      status: 'Status',
+      uploadFailed: '⚠️ Upload fehlgeschlagen',
+      retryUpload: '🔄 Upload wiederholen'
+    }
+  };
+  
+  $: t = translations[currentLang];
+  
+  function changeLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('raspscan_lang', lang);
+  }
+
   let scanners = [];
   let targets = [];
   let history = [];
@@ -53,11 +260,11 @@
   let pollInterval = null;
   let expandedThumbnail = null; // Track which thumbnail is expanded
 
-  const navLinks = [
-    { label: 'Dashboard', href: '#dashboard' },
-    { label: 'Scan', href: '#scan' },
-    { label: 'Targets', href: '#targets' },
-    { label: 'History', href: '#history' }
+  $: navLinks = [
+    { label: t.dashboard, href: '#dashboard' },
+    { label: t.scan, href: '#scan' },
+    { label: t.targets, href: '#targets' },
+    { label: t.history, href: '#history' }
   ];
 
   let quickProfiles = [
@@ -241,12 +448,12 @@
 
   function updateStats() {
     const todayScans = history.filter(h => h.job_type === 'scan' && isToday(h.created_at)).length;
-    const activeJobs = history.filter(h => h.status === 'queued' || h.status === 'running').length;
+    const activeJobsCount = history.filter(h => h.status === 'queued' || h.status === 'running').length;
 
     statCards = [
-      { label: 'Scanners found', value: String(scanners.length).padStart(2, '0'), icon: '📑', sub: 'eSCL + SANE' },
-      { label: 'Today scans', value: String(todayScans), icon: '✅', sub: 'Completed today' },
-      { label: 'Active jobs', value: String(activeJobs).padStart(2, '0'), icon: '⏳', sub: 'In progress' }
+      { label: t.scannersFound, value: String(scanners.length).padStart(2, '0'), icon: '📑', sub: 'eSCL + SANE' },
+      { label: t.todayScans, value: String(todayScans), icon: '✅', sub: t.completedToday },
+      { label: t.activeJobs, value: String(activeJobsCount).padStart(2, '0'), icon: '⏳', sub: t.inProgress }
     ];
   }
 
@@ -683,25 +890,25 @@
   }
 </script>
 
-<NavBar brand="RaspScan" {navLinks} links={navLinks} />
+<NavBar brand={t.brand} {navLinks} links={navLinks} {currentLang} onLanguageChange={changeLanguage} />
 
 <main class="page">
   <section id="dashboard" class="hero">
     <div>
-      <p class="eyebrow">Raspberry Pi · FastAPI · Svelte</p>
-      <h1>Central hub for scanning.</h1>
-      <p class="lede">Trigger scans on devices without physical buttons, and route files to SMB, email, Paperless-ngx, or webhooks.</p>
+      <p class="eyebrow">{t.heroTagline}</p>
+      <h1>{t.heroTitle}</h1>
+      <p class="lede">{t.heroDescription}</p>
       <div class="actions">
-        <a class="primary" href="#scan">Start a scan</a>
+        <a class="primary" href="#scan">{t.startScan}</a>
       </div>
     </div>
     <div class="card hero-card">
-      <div class="card-title">Live status</div>
+      <div class="card-title">{t.liveStatus}</div>
       <StatGrid cards={statCards} />
     </div>
   </section>
 
-  <SectionCard id="scan" title="Scan" subtitle="Start server-side scans and route results to targets.">
+  <SectionCard id="scan" {title}=t.scan subtitle="Start server-side scans and route results to targets.">
     <div class="grid two-cols">
       <div>
         <h3>Configured Scanners</h3>
@@ -758,27 +965,27 @@
                 <div class="muted">
                   {device.connection_type || device.type}
                   {#if device.connection_type && device.connection_type.includes('eSCL')}
-                    <span class="badge success" style="margin-left: 0.5rem;">⭐ Recommended</span>
+                    <span class="badge success" style="margin-left: 0.5rem;">{t.recommended}</span>
                   {/if}
                   {#if device.already_added}
-                    <span class="badge success" style="margin-left: 0.5rem;">✓ Already Added</span>
+                    <span class="badge success" style="margin-left: 0.5rem;">{t.alreadyAdded}</span>
                   {:else}
-                    <span class="badge warning" style="margin-left: 0.5rem;">Not Added Yet</span>
+                    <span class="badge warning" style="margin-left: 0.5rem;">{t.notAddedYet}</span>
                   {/if}
                 </div>
                 <div class="muted small" style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
                   {device.uri}
                 </div>
                 {#if !device.already_added}
-                  <button class="primary small" on:click={() => addDiscoveredScanner(device)}>Add Scanner</button>
+                  <button class="primary small" on:click={() => addDiscoveredScanner(device)}>{t.addScanner}</button>
                 {:else}
-                  <button class="ghost small" disabled>Already Added</button>
+                  <button class="ghost small" disabled>{t.alreadyAdded}</button>
                 {/if}
               </li>
             {/each}
           </ul>
         {:else if !isDiscovering}
-          <p class="muted small mt">No scanners found. Make sure scanners are powered on and connected (USB or network).</p>
+          <p class="muted small mt">{t.noScannersFound}</p>
         {/if}
         
         <h3 class="mt">Quick profiles</h3>
@@ -845,8 +1052,8 @@
   </SectionCard>
 
   <!-- Active Scans Section -->
-  {#if activeJobs.length > 0 || lastCompletedJob}
-  <SectionCard title={activeJobs.length > 0 ? "Active Scans" : "Last Scan"} subtitle={activeJobs.length > 0 ? "Scans in progress" : "Most recent scan"}>
+  <SectionCard title={t.activeScans} subtitle={activeJobs.length > 0 ? t.scansInProgress : lastCompletedJob ? t.mostRecentScan : t.noScansYet}>
+    {#if activeJobs.length > 0 || lastCompletedJob}
     <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
       {#each activeJobs as job}
         <div class="panel" style="padding: 1rem;">
@@ -872,14 +1079,14 @@
           <!-- Status breakdown -->
           <div style="margin-bottom: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.875rem; font-weight: 500; width: 50px;">Scan:</span>
               <span class={`badge ${job.status === 'running' ? 'warning' : 'info'}`} style="font-size: 0.875rem;">
-                {job.status === 'queued' ? '⏳ Queued' : '🔄 Scanning'}
+                {job.status === 'queued' ? '⏳ Queued' : '🔄 Running'}
               </span>
-              <span style="font-size: 0.875rem; font-weight: 500;">Scan</span>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 0.875rem; font-weight: 500; width: 50px; opacity: 0.5;">Upload:</span>
               <span class="badge" style="font-size: 0.875rem; opacity: 0.5;">⏸️ Waiting</span>
-              <span style="font-size: 0.875rem; opacity: 0.5;">Upload</span>
             </div>
           </div>
           
@@ -888,7 +1095,7 @@
               <span class="muted">Device:</span> {job.device_id || 'N/A'}
             </div>
             <div style="margin-bottom: 0.25rem;">
-              <span class="muted">Target:</span> {job.target_id || 'N/A'}
+              <span class="muted">Target:</span> {targets.find(t => t.id === job.target_id)?.name || job.target_id || 'N/A'}
             </div>
             <div>
               <span class="muted">Started:</span> {new Date(job.created_at).toLocaleTimeString()}
@@ -917,17 +1124,17 @@
           <!-- Status breakdown -->
           <div style="margin-bottom: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.875rem; font-weight: 500; width: 50px;">Scan:</span>
               <span class={`badge ${lastCompletedJob.status === 'failed' ? 'danger' : 'success'}`} style="font-size: 0.875rem;">
                 {lastCompletedJob.status === 'failed' ? '❌ Failed' : '✅ Done'}
               </span>
-              <span style="font-size: 0.875rem; font-weight: 500;">Scan</span>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 0.875rem; font-weight: 500; width: 50px; {lastCompletedJob.status === 'failed' ? 'opacity: 0.5;' : ''}">Upload:</span>
               <span class={`badge ${lastCompletedJob.status === 'failed' ? '' : lastCompletedJob.message ? 'danger' : 'success'}`} 
                     style="font-size: 0.875rem; {lastCompletedJob.status === 'failed' ? 'opacity: 0.5;' : ''}">
                 {lastCompletedJob.status === 'failed' ? '⏸️ Skipped' : lastCompletedJob.message ? '❌ Failed' : '✅ Done'}
               </span>
-              <span style="font-size: 0.875rem; font-weight: 500; {lastCompletedJob.status === 'failed' ? 'opacity: 0.5;' : ''}">Upload</span>
               {#if lastCompletedJob.status === 'completed' && lastCompletedJob.message}
                 <button 
                   class="primary small" 
@@ -951,7 +1158,7 @@
               <span class="muted">Device:</span> {lastCompletedJob.device_id || 'N/A'}
             </div>
             <div style="margin-bottom: 0.25rem;">
-              <span class="muted">Target:</span> {lastCompletedJob.target_id || 'N/A'}
+              <span class="muted">Target:</span> {targets.find(t => t.id === lastCompletedJob.target_id)?.name || lastCompletedJob.target_id || 'N/A'}
             </div>
             <div>
               <span class="muted">Completed:</span> {new Date(lastCompletedJob.created_at).toLocaleTimeString()}
@@ -960,10 +1167,12 @@
         </div>
       {/if}
     </div>
+    {:else}
+      <p class="muted">{t.noScansDesc}</p>
+    {/if}
   </SectionCard>
-  {/if}
 
-  <SectionCard id="targets" title="Targets" subtitle="Destinations for scanned documents.">
+  <SectionCard id="targets" title={t.targets} subtitle={t.targetsSubtitle}>
     <div class="grid two-cols">
       <div>
         <h3>Delivery targets</h3>
@@ -1039,7 +1248,7 @@
     </div>
   </SectionCard>
 
-  <SectionCard id="history" title="History" subtitle="Recent scan and print jobs.">
+  <SectionCard id="history" title={t.history} subtitle={t.historySubtitle}>
     {#if isLoadingHistory}
       <p class="muted">⏳ Loading history...</p>
     {:else if history.length === 0}
@@ -1059,7 +1268,7 @@
             <span style="font-family: monospace; font-size: 0.875rem;">{job.id.slice(0, 8)}</span>
             <span style="font-size: 0.875rem;">{job.job_type}</span>
             <span style="font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis;" title={job.device_id}>{job.device_id || 'N/A'}</span>
-            <span style="font-size: 0.875rem;">{job.target_id || 'N/A'}</span>
+            <span style="font-size: 0.875rem;">{targets.find(t => t.id === job.target_id)?.name || job.target_id || 'N/A'}</span>
             <span style="font-size: 0.875rem;">{new Date(job.created_at).toLocaleString()}</span>
             <div>
               <span class={`badge ${job.status === 'completed' && !job.message ? 'success' : job.status === 'failed' ? 'danger' : job.message ? 'warning' : 'warning'}`}>
