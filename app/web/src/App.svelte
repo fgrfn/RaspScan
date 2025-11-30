@@ -579,7 +579,7 @@
           
           <div style="display: flex; gap: 0.5rem;">
             <button class="primary" style="flex: 1;" on:click={() => saveTarget(false)}>Test & Save</button>
-            <button style="flex: 1;" on:click={() => saveTarget(true)}>Save without test</button>
+            <button class="ghost" style="flex: 1;" on:click={() => saveTarget(true)}>Save without test</button>
           </div>
           <p style="font-size: 0.85rem; color: #888; margin-top: 0.5rem;">
             💡 "Test & Save" validates the connection before saving. Use "Save without test" if the server is temporarily offline.
