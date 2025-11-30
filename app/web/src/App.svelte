@@ -33,7 +33,9 @@
   let isDiscovering = false;
   let lastDiscoveryTime = null;
   
-  let isLoading = true;
+  let isLoadingDevices = true;
+  let isLoadingTargets = true;
+  let isLoadingHistory = true;
 
   const navLinks = [
     { label: 'Dashboard', href: '#dashboard' },
@@ -48,46 +50,58 @@
     { name: 'Photo @600 DPI', description: 'High quality JPEG' }
   ];
 
-  onMount(async () => {
-    await loadData();
+  onMount(() => {
+    loadData();
   });
 
   async function loadData() {
-    isLoading = true;
-    try {
-      const [devicesRes, targetsRes, historyRes] = await Promise.all([
-        fetch(`${API_BASE}/devices`),
-        fetch(`${API_BASE}/targets`),
-        fetch(`${API_BASE}/history`)
-      ]);
+    // Load devices first (most important)
+    loadDevices();
+    // Load other data in parallel
+    loadTargets();
+    loadHistory();
+  }
 
-      if (devicesRes.ok) {
-        const devices = await devicesRes.json();
-        // Split devices into printers and scanners
+  async function loadDevices() {
+    try {
+      const res = await fetch(`${API_BASE}/devices`);
+      if (res.ok) {
+        const devices = await res.json();
         printers = devices.filter(d => d.device_type === 'printer');
         scanners = devices.filter(d => d.device_type === 'scanner');
-        console.log('Loaded devices:', printers.length, 'printers,', scanners.length, 'scanners');
-      } else {
-        console.error('Failed to load devices:', devicesRes.status);
+        updateStats();
       }
-      
-      if (targetsRes.ok) {
-        targets = await targetsRes.json();
-      } else {
-        console.error('Failed to load targets:', targetsRes.status);
-      }
-      
-      if (historyRes.ok) {
-        history = await historyRes.json();
-      } else {
-        console.error('Failed to load history:', historyRes.status);
-      }
-
-      updateStats();
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('Failed to load devices:', error);
     } finally {
-      isLoading = false;
+      isLoadingDevices = false;
+    }
+  }
+
+  async function loadTargets() {
+    try {
+      const res = await fetch(`${API_BASE}/targets`);
+      if (res.ok) {
+        targets = await res.json();
+      }
+    } catch (error) {
+      console.error('Failed to load targets:', error);
+    } finally {
+      isLoadingTargets = false;
+    }
+  }
+
+  async function loadHistory() {
+    try {
+      const res = await fetch(`${API_BASE}/history`);
+      if (res.ok) {
+        history = await res.json();
+        updateStats();
+      }
+    } catch (error) {
+      console.error('Failed to load history:', error);
+    } finally {
+      isLoadingHistory = false;
     }
   }
 
@@ -442,7 +456,7 @@
     <div class="grid two-cols">
       <div>
         <h3>Configured Scanners</h3>
-        {#if isLoading}
+        {#if isLoadingDevices}
           <p class="muted">⏳ Loading scanners...</p>
         {:else if scanners.length === 0}
           <p class="muted">No scanners configured. Click "Discover Scanners" below to add.</p>
@@ -551,8 +565,8 @@
   <SectionCard id="targets" title="Targets" subtitle="Destinations for scanned documents.">
     <div class="grid two-cols">
       <div>
-        <h3>Configured targets</h3>
-        {#if isLoading}
+        <h3>Delivery targets</h3>
+        {#if isLoadingTargets}
           <p class="muted">⏳ Loading targets...</p>
         {:else if targets.length === 0}
           <p class="muted">No targets configured yet.</p>
@@ -607,7 +621,9 @@
   </SectionCard>
 
   <SectionCard id="history" title="History" subtitle="Recent scan and print jobs.">
-    {#if history.length === 0}
+    {#if isLoadingHistory}
+      <p class="muted">⏳ Loading history...</p>
+    {:else if history.length === 0}
       <p class="muted">No jobs in history yet.</p>
     {:else}
       <div class="table">

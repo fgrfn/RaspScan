@@ -78,7 +78,7 @@ class JobRepository:
     
     def list(self, job_type: Optional[str] = None, 
              printer_id: Optional[str] = None,
-             limit: int = 100) -> List[JobRecord]:
+             limit: int = 50) -> List[JobRecord]:
         """List jobs with optional filters."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()

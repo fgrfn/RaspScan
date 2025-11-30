@@ -121,7 +121,8 @@ class Database:
             
             # Create indexes
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_type_created ON jobs(job_type, created_at DESC)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_devices_type ON devices(device_type)")
