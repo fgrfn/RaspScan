@@ -1,14 +1,16 @@
-# RaspScan Architecture & Design
+# Scan2Target Architecture & Design
+
+**📚 Learning Project:** This project was created with AI/Copilot assistance as a learning exercise.
 
 ## Overview
-RaspScan is a Raspberry Pi-hosted scan and print server that centralizes scanner control and print spooling for mixed USB and network devices. The system drives scanners that lack physical scan buttons (e.g., HP Envy 6400) by initiating scans from a web UI or REST API, then routes output to local or network destinations.
+Scan2Target is a web-based scan server for Linux systems, Raspberry Pi, and virtual machines. It centralizes scanner control for USB and network devices, offering a modern web interface and REST API to initiate scans and automatically route documents to configured destinations (SMB shares, email, cloud storage, webhooks, etc.).
 
 ## Goals and Constraints
-- **Platform:** Raspberry Pi 4/5 on Raspberry Pi OS; efficient idle footprint.
-- **Backends:** eSCL/AirScan and SANE for scanning; CUPS/IPP for printing.
-- **Targets:** Local filesystem, SMB/CIFS, optional SFTP, Paperless-ngx (consume folder or HTTP), SMTP email, webhook callbacks. (No Nextcloud/WebDAV targets.)
-- **Security:** Authenticated access, optional IP allowlist, reverse-proxy friendly HTTPS.
-- **Extensibility:** Pluggable targets, profiles, and scanners; optional OCR as a future module.
+- **Platform:** Linux servers, Raspberry Pi, VMs; efficient resource usage
+- **Backends:** eSCL/AirScan and SANE for scanning
+- **Targets:** SMB/CIFS, SFTP, Email (SMTP), Paperless-ngx, Webhooks, Cloud (Google Drive, Dropbox, OneDrive, Nextcloud/WebDAV)
+- **Security:** Optional JWT authentication, encrypted credential storage (Fernet AES-128), reverse-proxy friendly HTTPS
+- **Extensibility:** Pluggable targets, scan profiles, real-time WebSocket updates
 
 ## High-Level Architecture
 ```

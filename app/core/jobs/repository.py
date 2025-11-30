@@ -122,3 +122,13 @@ class JobRepository:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
             return cursor.rowcount > 0
+    
+    def clear_completed(self) -> int:
+        """Delete all completed and failed jobs. Returns count of deleted jobs."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM jobs 
+                WHERE status IN ('completed', 'failed')
+            """)
+            return cursor.rowcount

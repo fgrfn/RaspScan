@@ -1,37 +1,46 @@
-# RaspScan Implementation Plan
+# Scan2Target Implementation Plan
 
-## Milestones
+**📚 Learning Project:** Created with AI/Copilot assistance as a learning exercise.
 
-### v0.1 (MVP)
-- FastAPI scaffold with authentication stubs and in-memory session tokens.
-- Basic config storage: SQLite migrations, YAML bootstrap loader.
-- Scanner discovery via SANE/eSCL enumeration (list only).
-- Start scan for a single backend; save to local folder target; filename templates.
-- Printer enumeration via CUPS; submit print job for uploaded PDF/JPEG/PNG; test page endpoint.
-- Targets: Local folder + SMB (basic upload) + Webhook; Paperless consume folder drop.
-- Web UI (Svelte) skeleton: Dashboard, Scan form (single target), Print upload, Targets list, History list.
-- Systemd service files for API and frontend; README for reverse proxy with Caddy.
+## Implementation Status
 
-### v0.3
-- Full scan profiles (150/300/600 DPI; color/gray; A4/Letter; PDF/JPEG).
-- Target connectivity tests; SFTP optional; SMTP email sending.
-- Jobs/history persistence with status transitions; WebSocket job updates.
-- IP allowlist enforcement; password hashing; encrypted credential fields.
-- Paperless HTTP uploader; retry queue for failed target uploads.
+**Current Version: v1.0+** - All major milestones completed
 
-### v0.5
-- Robust discovery (Avahi/mDNS for AirScan/eSCL); device capability caching.
-- UI improvements: profile selection, per-target config forms, progress indicators.
-- Configurable default printer/options; CUPS queue monitoring; cancel job API.
-- Installer scripts: Docker Compose stack (API, frontend, CUPS, Avahi); data volume layout.
-- Metrics/health endpoints; structured JSON logging; log rotation guidance.
+## Completed Milestones
 
-### v1.0
-- Hardened security: session/JWT rotation, CSRF protection, rate limiting on auth.
-- Full target matrix (Local, SMB, SFTP, Email, Paperless folder + HTTP, Webhook) with retries and exponential backoff.
-- UI polish and accessibility; downloadable scan links; history filters.
-- Backup/restore tooling for SQLite + YAML; migration helpers.
-- Optional OCR sidecar integration and API exposure (if available).
+### ✅ Core Features (v1.0)
+- FastAPI backend with JWT authentication
+- SQLite database for persistence
+- SANE and eSCL/AirScan scanner support
+- Multiple scan profiles (150-600 DPI, color/grayscale, PDF/JPEG)
+- 9 target types: SMB, SFTP, Email, Paperless-ngx, Webhooks, Google Drive, Dropbox, OneDrive, Nextcloud
+- Fernet encryption for credentials (AES-128-CBC + HMAC)
+- Automatic retry logic with exponential backoff
+- WebSocket real-time updates
+- Job history with status tracking
+- Systemd service integration
+- Automated installer script
+
+### ✅ Web UI Features
+- Modern Svelte + Vite frontend
+- Multi-language support (English, German)
+- Responsive PWA design
+- Statistics dashboard with analytics
+- Live scan previews and thumbnails
+- Favorites system for scanners/targets
+- Manual scanner addition via IP
+- Connection testing for targets
+- Clear history functionality
+
+### ✅ Advanced Features
+- Multi-page scanning (ADF support)
+- Scan preview (low-res quick scan)
+- Automatic PDF compression
+- Upload retry for failed deliveries
+- Automatic cleanup (cron job)
+- Maintenance API endpoints
+- Real-time progress indicators
+- Separate scan/upload status tracking
 
 ## Technology Justification
 - **FastAPI (Python 3):** async-friendly, strong typing via Pydantic, lightweight for Pi hardware.

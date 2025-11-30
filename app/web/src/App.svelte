@@ -1235,6 +1235,31 @@
     }
   }
 
+  async function clearHistory() {
+    if (!confirm(t.clearHistoryConfirm)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE}/history`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ ${result.deleted_count} ${lang === 'de' ? 'Aufträge gelöscht' : 'jobs deleted'}`);
+        await loadHistory();
+        await loadStats(); // Reload stats to reflect changes
+      } else {
+        const error = await response.json();
+        alert(`❌ ${error.detail || 'Failed to clear history'}`);
+      }
+    } catch (error) {
+      console.error('Clear history error:', error);
+      alert(`❌ Error: ${error.message}`);
+    }
+  }
+
   async function removeTarget(targetId) {
     const target = targets.find(t => t.id === targetId);
     const targetName = target ? target.name : targetId;
@@ -1251,7 +1276,11 @@
       if (response.ok) {
         // Remove from local array immediately for instant UI update
         targets = targets.filter(t => t.id !== targetId);
+        // Remove from stats immediately
+        statsTargets = statsTargets.filter(s => s.target !== targetName && s.target !== targetId);
         alert('✅ Target erfolgreich entfernt');
+        // Reload stats to get updated data
+        await loadStats();
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         alert(`❌ Fehler beim Entfernen: ${errorData.detail || response.statusText}`);
@@ -1788,26 +1817,26 @@
           <!-- Status breakdown -->
           <div style="margin-bottom: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-              <span style="font-size: 0.875rem; font-weight: 500; width: 50px;">Scan:</span>
+              <span style="font-size: 0.875rem; font-weight: 500; width: 50px;">{t.scanStatus}</span>
               <span class={`badge ${job.status === 'running' ? 'warning' : 'info'}`} style="font-size: 0.875rem;">
-                {job.status === 'queued' ? '⏳ Queued' : '🔄 Running'}
+                {job.status === 'queued' ? '⏳ ' + (lang === 'de' ? 'Wartend' : 'Queued') : '🔄 ' + (lang === 'de' ? 'Läuft' : 'Running')}
               </span>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-size: 0.875rem; font-weight: 500; width: 50px; opacity: 0.5;">Upload:</span>
-              <span class="badge" style="font-size: 0.875rem; opacity: 0.5;">⏸️ Waiting</span>
+              <span style="font-size: 0.875rem; font-weight: 500; width: 50px; opacity: 0.5;">{t.uploadStatus}</span>
+              <span class="badge" style="font-size: 0.875rem; opacity: 0.5;">⏸️ {lang === 'de' ? 'Wartend' : 'Waiting'}</span>
             </div>
           </div>
           
           <div style="font-size: 0.875rem;">
             <div style="margin-bottom: 0.25rem;">
-              <span class="muted">Device:</span> {job.device_id || 'N/A'}
+              <span class="muted">{t.device}:</span> {job.device_id ? formatScannerName(job.device_id) : 'N/A'}
             </div>
             <div style="margin-bottom: 0.25rem;">
-              <span class="muted">Target:</span> {targets.find(t => t.id === job.target_id)?.name || job.target_id || 'N/A'}
+              <span class="muted">{t.target}:</span> {targets.find(t => t.id === job.target_id)?.name || job.target_id || 'N/A'}
             </div>
             <div>
-              <span class="muted">Started:</span> {new Date(job.created_at).toLocaleTimeString()}
+              <span class="muted">{t.started}:</span> {new Date(job.created_at).toLocaleTimeString()}
             </div>
           </div>
         </div>
@@ -1833,16 +1862,16 @@
           <!-- Status breakdown -->
           <div style="margin-bottom: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-              <span style="font-size: 0.875rem; font-weight: 500; width: 50px;">Scan:</span>
+              <span style="font-size: 0.875rem; font-weight: 500; width: 50px;">{t.scanStatus}</span>
               <span class={`badge ${lastCompletedJob.status === 'failed' ? 'danger' : 'success'}`} style="font-size: 0.875rem;">
-                {lastCompletedJob.status === 'failed' ? '❌ Failed' : '✅ Done'}
+                {lastCompletedJob.status === 'failed' ? '❌ ' + (lang === 'de' ? 'Fehlgeschlagen' : 'Failed') : t.done}
               </span>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-size: 0.875rem; font-weight: 500; width: 50px; {lastCompletedJob.status === 'failed' ? 'opacity: 0.5;' : ''}">Upload:</span>
+              <span style="font-size: 0.875rem; font-weight: 500; width: 50px; {lastCompletedJob.status === 'failed' ? 'opacity: 0.5;' : ''}">{t.uploadStatus}</span>
               <span class={`badge ${lastCompletedJob.status === 'failed' ? '' : lastCompletedJob.message ? 'danger' : 'success'}`} 
                     style="font-size: 0.875rem; {lastCompletedJob.status === 'failed' ? 'opacity: 0.5;' : ''}">
-                {lastCompletedJob.status === 'failed' ? '⏸️ Skipped' : lastCompletedJob.message ? '❌ Failed' : '✅ Done'}
+                {lastCompletedJob.status === 'failed' ? '⏸️ ' + (lang === 'de' ? 'Übersprungen' : 'Skipped') : lastCompletedJob.message ? '❌ ' + (lang === 'de' ? 'Fehlgeschlagen' : 'Failed') : t.done}
               </span>
               {#if lastCompletedJob.status === 'completed' && lastCompletedJob.message}
                 <button 
@@ -1864,13 +1893,13 @@
           
           <div style="font-size: 0.875rem;">
             <div style="margin-bottom: 0.25rem;">
-              <span class="muted">Device:</span> {lastCompletedJob.device_id || 'N/A'}
+              <span class="muted">{t.device}:</span> {lastCompletedJob.device_id ? formatScannerName(lastCompletedJob.device_id) : 'N/A'}
             </div>
             <div style="margin-bottom: 0.25rem;">
-              <span class="muted">Target:</span> {targets.find(t => t.id === lastCompletedJob.target_id)?.name || lastCompletedJob.target_id || 'N/A'}
+              <span class="muted">{t.target}:</span> {targets.find(t => t.id === lastCompletedJob.target_id)?.name || lastCompletedJob.target_id || 'N/A'}
             </div>
             <div>
-              <span class="muted">Completed:</span> {new Date(lastCompletedJob.created_at).toLocaleTimeString()}
+              <span class="muted">{t.completed}:</span> {new Date(lastCompletedJob.created_at).toLocaleTimeString()}
             </div>
           </div>
         </div>
@@ -2069,10 +2098,10 @@
           <h3>{t.timeline}</h3>
           <div class="card" style="padding: 1.5rem;">
             <div style="display: grid; grid-template-columns: 120px repeat(3, 1fr); gap: 0.5rem; font-size: 0.875rem;">
-              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border);">Date</div>
-              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border); text-align: center;">Total</div>
-              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border); text-align: center;">Successful</div>
-              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border); text-align: center;">Failed</div>
+              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border);">{t.date}</div>
+              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border); text-align: center;">{t.total}</div>
+              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border); text-align: center;">{t.successful}</div>
+              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border); text-align: center;">{t.failed}</div>
               
               {#each statsTimeline.slice(0, 10) as day}
                 <div style="padding: 0.5rem;">{day.date}</div>
@@ -2127,10 +2156,11 @@
           <div class="card" style="padding: 1.5rem;">
             <div style="display: flex; align-items: flex-end; gap: 0.25rem; height: 150px;">
               {#each statsHourly as hour}
+                {@const maxCount = Math.max(...statsHourly.map(h => h.count), 1)}
                 <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
                   <div 
                     style="width: 100%; background: var(--primary); border-radius: 4px 4px 0 0; transition: all 0.3s;"
-                    style:height="{hour.count > 0 ? (hour.count / Math.max(...statsHourly.map(h => h.count)) * 100) : 2}%"
+                    style:height="{hour.count > 0 ? (hour.count / maxCount * 100) : 2}%"
                     title="{hour.hour}:00 - {hour.count} scans"
                   ></div>
                   <div style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--muted);">{hour.hour}</div>
@@ -2151,6 +2181,9 @@
     {:else if history.length === 0}
       <p class="muted">No jobs in history yet.</p>
     {:else}
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+        <button class="danger small" on:click={clearHistory}>🗑️ {t.clearHistory}</button>
+      </div>
       <div class="table" style="display: block;">
         <div style="display: grid; grid-template-columns: 100px 80px 1fr 1fr 180px 200px; gap: 1rem; padding: 0.75rem 1rem; font-weight: 600; border-bottom: 2px solid var(--border); background: var(--surface-dim);">
           <span>{t.id}</span>
@@ -2164,7 +2197,7 @@
           <div style="display: grid; grid-template-columns: 100px 80px 1fr 1fr 180px 200px; gap: 1rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); align-items: start;">
             <span style="font-family: monospace; font-size: 0.875rem;">{job.id.slice(0, 8)}</span>
             <span style="font-size: 0.875rem;">{job.job_type}</span>
-            <span style="font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis;" title={job.device_id}>{job.device_id || 'N/A'}</span>
+            <span style="font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis;" title={job.device_id}>{job.device_id ? formatScannerName(job.device_id) : 'N/A'}</span>
             <span style="font-size: 0.875rem;">{targets.find(t => t.id === job.target_id)?.name || job.target_id || 'N/A'}</span>
             <span style="font-size: 0.875rem;">{new Date(job.created_at).toLocaleString()}</span>
             <div>

@@ -1,782 +1,174 @@
-# Scan2Target - Scan Hub
+# Scan2Target
 
-Scan2Target is a network scan server that centralizes scanning for network and USB devices. Trigger scans remotely via API or web interface and automatically route scanned documents to network targets (SMB shares, email, webhooks, cloud storage). Works on Linux servers, Raspberry Pi, and virtual machines.
+Modern web-based scan server for network and USB scanners. Control scanners remotely and route documents to SMB shares, email, cloud storage, or webhooks.
 
-## Contents
-- `docs/architecture.md` — system architecture, API overview, security model.
-- `docs/implementation_plan.md` — roadmap from MVP to v1.0.
-- `app/` — backend (FastAPI), core modules, and web UI skeleton.
-- `installer/` — installation helper and systemd unit template.
+**📚 Learning Project:** Created with AI/Copilot assistance as a learning exercise for modern web development, REST APIs, and system integration.
 
-## Installation & Autostart
+## Features
 
-### Automated Installation (Recommended)
-1. Clone the repository and run the installer:
-   ```bash
-   git clone https://github.com/fgrfn/Scan2Target.git
-   cd Scan2Target
-   sudo ./installer/install.sh
-   ```
-
-The installer automatically:
-- ✅ Installs system dependencies (SANE, ImageMagick, Node.js)
-- ✅ Creates Python virtual environment
-- ✅ Installs Python dependencies
-- ✅ Builds Web UI production bundle
-- ✅ Sets up systemd service (auto-start on boot, standard HTTP port 80)
-- ✅ Configures automatic cleanup cron job (daily at 3 AM)
-- ✅ Creates database and default admin user
-
-2. Access Scan2Target at: `http://YOUR_SERVER_IP` (no port needed - runs on port 80)
-
-### Manual Setup
-If you prefer manual installation:
-1. Install dependencies: `sudo apt install avahi-daemon sane-utils sane-airscan python3-venv smbclient ssh imagemagick nodejs npm`
-2. Create virtualenv: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
-3. Build Web UI: `cd app/web && npm install && npm run build && cd ../..`
-4. Copy service file: `sudo cp installer/scan2target.service /etc/systemd/system/`
-5. Edit service paths in `/etc/systemd/system/scan2target.service`
-6. Enable service: `sudo systemctl enable --now scan2target`
-7. Setup cleanup: `chmod +x scripts/cleanup.sh && (crontab -l; echo "0 3 * * * $(pwd)/scripts/cleanup.sh") | crontab -`
+- 🖨️ **Auto-Discovery** - USB and network scanners (SANE/eSCL)
+- 🎯 **9 Target Types** - SMB, SFTP, Email, Paperless-ngx, Webhooks, Google Drive, Dropbox, OneDrive, Nextcloud
+- 🌍 **Multi-Language** - English/German UI
+- 📊 **Statistics** - Usage tracking and analytics
+- 🔒 **Secure** - Encrypted credentials (Fernet AES-128)
+- 🔄 **Auto-Retry** - Failed uploads retry automatically
+- 📱 **PWA** - Install as native app
+- 🔍 **Preview** - Low-res preview before full scan
+- ⚡ **Real-Time** - WebSocket live updates
 
 ## Quick Start
 
-After installation:
-1. Access Web UI at `http://YOUR_SERVER_IP`
-2. Login with default credentials (username: `admin`, password: `admin`)
-3. **⚠️ SECURITY: Complete these steps immediately:**
-   - Change the default admin password
-   - Set encryption key for production: `export SCAN2TARGET_SECRET_KEY=$(openssl rand -base64 32)`
-   - Add the key to `/etc/systemd/system/scan2target.service` and restart
-4. Click "Discover Scanners" to find your scanner
-5. Configure a target (SMB share, email, etc.)
-6. Start scanning!
+```bash
+git clone https://github.com/fgrfn/Scan2Target.git
+cd Scan2Target
+sudo ./installer/install.sh
+```
 
-### Development Mode
-For local development with hot-reload:
+Access at: `http://YOUR_SERVER_IP`
+
+**Default Login:** `admin` / `admin` (**change immediately!**)
+
+### Security Setup (Production)
+
+```bash
+# Generate encryption key
+export SCAN2TARGET_SECRET_KEY=$(openssl rand -base64 32)
+
+# Add to service file
+sudo nano /etc/systemd/system/scan2target.service
+# Add: Environment="SCAN2TARGET_SECRET_KEY=your-key-here"
+
+# Restart
+sudo systemctl daemon-reload
+sudo systemctl restart scan2target
+```
+
+## Requirements
+
+- Linux (Debian/Ubuntu/Raspberry Pi OS)
+- 2GB+ RAM recommended
+- Scanner with SANE or eSCL support
+
+## Usage
+
+### 1. Add Scanner
+- Click "Discover Scanners"
+- Select device and click "Add"
+
+### 2. Configure Target
+**SMB Share:**
+```json
+{
+  "name": "NAS",
+  "type": "SMB",
+  "config": {
+    "host": "//nas.local/scans",
+    "username": "user",
+    "password": "pass"
+  }
+}
+```
+
+**Email:**
+```json
+{
+  "name": "Archive",
+  "type": "Email",
+  "config": {
+    "connection": "archive@example.com",
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "username": "scan@example.com",
+    "password": "app-password"
+  }
+}
+```
+
+### 3. Scan
+- Select scanner, profile, and target
+- Click "Start Scan"
+- Monitor progress in "Active Scans"
+
+## Scan Profiles
+
+- **Document @200 DPI (Gray)** - Text documents (~150 KB/page)
+- **Multi-Page (ADF)** - Automatic feeder, one PDF
+- **Color @300 DPI** - Standard quality (~400 KB/page)
+- **Photo @600 DPI** - High quality (~2 MB/page)
+
+## Target Types
+
+1. **SMB/CIFS** - Windows/Samba shares
+2. **SFTP** - SSH file transfer
+3. **Email** - SMTP delivery
+4. **Paperless-ngx** - Document management
+5. **Webhook** - Custom HTTP endpoints
+6. **Google Drive** - OAuth2
+7. **Dropbox** - OAuth2
+8. **OneDrive** - OAuth2
+9. **Nextcloud** - WebDAV
+
+All targets test connection before save and support auto-retry on failure.
+
+## Service Management
+
+```bash
+sudo systemctl start scan2target    # Start
+sudo systemctl stop scan2target     # Stop
+sudo systemctl restart scan2target  # Restart
+sudo systemctl status scan2target   # Status
+sudo journalctl -u scan2target -f   # Logs
+```
+
+## API
+
+Full REST API with Swagger docs at: `http://YOUR_SERVER_IP/docs`
+
+**Key Endpoints:**
+- `POST /api/v1/scan/start` - Start scan
+- `POST /api/v1/scan/preview` - Quick preview
+- `GET /api/v1/devices/discover` - Find scanners
+- `GET /api/v1/stats/overview` - Statistics
+- `WS /api/v1/ws` - Real-time updates
+
+## Development
+
 ```bash
 # Backend
 source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0
 
-# Frontend (in separate terminal)
+# Frontend
 cd app/web
 npm run dev
 ```
 
-## System Requirements
+## Documentation
 
-- **Hardware:** Linux server, VM, or Raspberry Pi (2GB+ RAM recommended)
-- **OS:** Debian-based Linux (Debian, Ubuntu, Raspberry Pi OS)
-- **Network:** Wired or WiFi connection
-- **Scanner:** USB or network scanner with SANE/eSCL support
+- **API:** `http://YOUR_SERVER_IP/docs`
+- **Architecture:** `docs/architecture.md`
+- **Implementation:** `docs/implementation_plan.md`
 
-## Authentication
+## Tech Stack
 
-### Default User
-On first startup, Scan2Target creates a default admin user:
-- **Username:** `admin`
-- **Password:** `admin`
-- **⚠️ SECURITY:** Change this password immediately after first login!
+- **Backend:** FastAPI, Python 3.12
+- **Frontend:** Svelte, Vite
+- **Database:** SQLite
+- **Scanner:** SANE, eSCL/AirScan
+- **Encryption:** Fernet (AES-128-CBC + HMAC)
 
-### Login
-```bash
-curl -X POST http://localhost/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin"}'
-```
+## License
 
-Response:
-```json
-{
-  "access_token": "eyJ...",
-  "token_type": "bearer",
-  "user": {
-    "id": 1,
-    "username": "admin",
-    "email": "admin@scan2target.local",
-    "is_admin": true
-  }
-}
-```
+MIT License - See LICENSE file
 
-### Using Protected Endpoints
-Include the token in the `Authorization` header:
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost/api/v1/scan/start
-```
+## Contributing
 
-### Authentication Configuration
-By default, authentication is **optional**. To require authentication for all API calls:
+This is a learning project. Contributions welcome!
 
-Create `.env` file:
-```bash
-SCAN2TARGET_REQUIRE_AUTH=true
-SCAN2TARGET_JWT_SECRET=your-secret-key-here
-SCAN2TARGET_JWT_EXPIRATION=3600
-```
+---
 
-Or set environment variables:
-```bash
-export SCAN2TARGET_REQUIRE_AUTH=true
-```
-
-## Security & Credential Encryption
-
-Scan2Target encrypts sensitive credentials (passwords, API tokens) before storing them in the database.
-
-### Encryption Key Setup
-
-**Development (automatic):**
-- Encryption key is auto-generated in `~/.scan2target/encryption.key`
-- Suitable for testing and development
-
-**Production (recommended):**
-1. Generate a secure encryption key:
-   ```bash
-   openssl rand -base64 32
-   ```
-
-2. Set as environment variable:
-   ```bash
-   export SCAN2TARGET_SECRET_KEY="your-generated-key"
-   ```
-
-3. Add to systemd service file (`/etc/systemd/system/scan2target.service`):
-   ```ini
-   [Service]
-   Environment="SCAN2TARGET_SECRET_KEY=your-generated-key"
-   ```
-
-4. Reload and restart service:
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl restart scan2target
-   ```
-
-**What is encrypted:**
-- SMB/SFTP passwords
-- Email SMTP credentials
-- API tokens (Paperless-ngx, OAuth2)
-- All sensitive authentication fields
-
-**Encryption method:**
-- Algorithm: Fernet (AES-128-CBC with HMAC)
-- Key derivation: PBKDF2 with 100,000 iterations
-- Storage: Encrypted credentials in SQLite database
-
-### Migration from Unencrypted Data
-Existing targets are automatically migrated:
-1. Old unencrypted credentials are read normally
-2. On first update/save, they are encrypted
-3. No manual migration needed
-
-## Database & Persistence
-
-Scan2Target uses SQLite for data persistence:
-- **Database file:** `scan2target.db` (created automatically)
-- **Location:** Current working directory or set via `SCAN2TARGET_DATABASE_PATH`
-
-Stored data:
-- User accounts and sessions
-- Job history (scan jobs)
-- Target configurations (SMB, SFTP, email, webhooks)
-- Device configurations (manually added scanners)
-- Scan profiles with quality settings
-
-### Backup
-```bash
-# Backup database
-cp scan2target.db scan2target.db.backup
-
-# Or use SQLite backup
-sqlite3 scan2target.db ".backup scan2target_backup.db"
-```
-
-For HTTPS, place Scan2Target behind Caddy or nginx with TLS termination and enable IP allowlists via configuration.
-
-## Web UI Features
-
-The `app/web` directory includes a modern Svelte + Vite single-page interface with:
-- **🌍 Multi-language support:** English and German (more languages easily added)
-- **📱 Responsive design:** Works on desktop, tablet, and mobile
-- **🎨 Modern glassmorphism styling**
-- **⭐ Favorites system:** Mark frequently used scanners and targets
-- **📊 Live scan preview:** Real-time thumbnails (50% size, click to expand)
-- **🔄 Upload retry:** One-click retry for failed uploads
-- **📈 Status tracking:** Separate scan and upload status indicators
-- **🚀 PWA support:** Install as native app
-- **🔍 Scan preview:** Low-res preview before full scan (100 DPI grayscale)
-- **☁️ Cloud targets:** Configure Google Drive, Dropbox, OneDrive, Nextcloud
-- **📊 Statistics dashboard:** Visual analytics with charts and metrics
-
-To run locally:
-```bash
-cd app/web
-npm install
-npm run dev
-```
-
-Build assets with `npm run build`; serve the resulting `dist/` directory via Caddy/nginx or mount it as static files in the FastAPI app.
-
-## Scanner Setup
-
-### Auto-Discovery (Recommended)
-Scan2Target automatically detects scanners via SANE:
-- **USB Scanners:** Connected via any USB port
-- **Network Scanners:** eSCL/AirScan devices on the local network
-- **Multi-function Devices:** Devices supporting both print and scan
-
-Discovery endpoint:
-```bash
-curl http://localhost/api/v1/devices/discover
-```
-
-### How It Works
-- **USB Detection:** SANE backends detect USB scanners (HPAIO, EPSON, etc.)
-- **Network Detection:** Uses eSCL/AirScan protocol for wireless scanners
-- **Duplicate Filtering:** Automatically prefers eSCL over legacy protocols for best compatibility
-- **Status Monitoring:** Scanner availability cached (30s TTL) for fast UI updates
-
-### Adding Scanners
-1. Click "Discover Scanners" in the Scan section
-2. Select detected device and click "Add"
-3. Scanner is saved to database for future use
-
-### Scan Profiles
-Optimized profiles for different use cases:
-- **Document @200 DPI (Gray):** Smallest size, best for text (~100-300 KB/page)
-- **Multi-Page Document (ADF):** 🆕 Automatic document feeder support - scan multiple pages into one PDF
-- **Color @300 DPI:** Standard quality for mixed content (~300-600 KB/page)
-- **Grayscale @150 DPI:** Fast scans, very small files (~80-200 KB/page)
-- **Photo @600 DPI:** High quality for photos (~1-3 MB/page)
-
-### Multi-Page Scanning (ADF)
-Automatic Document Feeder support:
-- Scans until ADF is empty
-- Combines all pages into single PDF
-- Automatic page detection
-- Safety limit: 100 pages per job
-
-### Compression
-All PDFs are automatically compressed using JPEG compression:
-- Quality settings: 75-95% depending on profile
-- Reduces file sizes by 90-98% vs uncompressed TIFF
-- Empty A4 page: ~50-100 KB (vs 33+ MB uncompressed)
-
-## Scan Targets
-
-Configure destinations for scanned documents. Scan2Target supports 9 target types:
-
-### Supported Target Types
-1. **SMB/CIFS** - Windows/Samba network shares
-2. **SFTP** - Secure file transfer via SSH
-3. **Email** - Send scans via SMTP
-4. **Paperless-ngx** - Document management system integration
-5. **Webhook** - Custom HTTP endpoints
-6. **Google Drive** - Upload to Google Drive via OAuth2
-7. **Dropbox** - Upload to Dropbox via OAuth2
-8. **OneDrive** - Upload to Microsoft OneDrive via OAuth2
-9. **Nextcloud** - Upload to Nextcloud via WebDAV
-
-All targets support:
-- ⭐ Favorites (mark frequently used targets)
-- 🔍 Connection testing before save
-- 🔄 Automatic retry on upload failure (3 attempts with exponential backoff)
-- 📝 Detailed error messages
-
-### SMB/CIFS Share
-```bash
-curl -X POST http://localhost/api/v1/targets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "NAS Documents",
-    "type": "SMB",
-    "config": {
-      "host": "//nas.local/scans",
-      "username": "scanner",
-      "password": "secret"
-    }
-  }'
-```
-
-### Email
-```bash
-curl -X POST http://localhost/api/v1/targets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Email to Archive",
-    "type": "Email",
-    "config": {
-      "connection": "archive@example.com",
-      "smtp_host": "smtp.gmail.com",
-      "smtp_port": 587,
-      "username": "scanner@example.com",
-      "password": "app-password",
-      "from": "scanner@example.com",
-      "use_tls": true
-    }
-  }'
-```
-
-### SFTP Target
-```bash
-curl -X POST http://localhost/api/v1/targets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "SFTP Server",
-    "type": "SFTP",
-    "config": {
-      "connection": "user@server.example.com",
-      "host": "server.example.com",
-      "port": 22,
-      "username": "user",
-      "password": "password",
-      "remote_path": "/uploads/scans"
-    }
-  }'
-```
-
-**Note**: Password is optional - if omitted, SSH key authentication will be used. Requires `sshpass` for password authentication: `sudo apt install sshpass`
-
-### Paperless-ngx Integration
-```bash
-curl -X POST http://localhost/api/v1/targets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Paperless Archive",
-    "type": "Paperless-ngx",
-    "config": {
-      "connection": "http://paperless.local:8000",
-      "api_token": "your-api-token"
-    }
-  }'
-```
-
-### Webhook Target
-```bash
-curl -X POST http://localhost/api/v1/targets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Custom Webhook",
-    "type": "Webhook",
-    "config": {
-      "connection": "https://example.com/webhook"
-    }
-  }'
-```
-
-### Cloud Storage Targets
-
-#### Google Drive
-```bash
-curl -X POST http://localhost/api/v1/targets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Google Drive Scans",
-    "type": "Google Drive",
-    "config": {
-      "access_token": "ya29.a0AfH6...",
-      "folder_id": "1a2b3c4d5e6f",
-      "connection": "/Scans"
-    }
-  }'
-```
-
-**Getting OAuth2 Token:**
-1. Create project in [Google Cloud Console](https://console.cloud.google.com/)
-2. Enable Google Drive API
-3. Create OAuth 2.0 credentials (Desktop app)
-4. Use OAuth playground or script to get access token
-5. Optional: Specify `folder_id` for target folder (leave empty for root)
-
-#### Dropbox
-```bash
-curl -X POST http://localhost/api/v1/targets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Dropbox Scans",
-    "type": "Dropbox",
-    "config": {
-      "access_token": "sl.BQx...",
-      "folder_path": "/Documents/Scans",
-      "connection": "/Documents/Scans"
-    }
-  }'
-```
-
-**Getting OAuth2 Token:**
-1. Create app in [Dropbox App Console](https://www.dropbox.com/developers/apps)
-2. Generate access token
-3. Set `folder_path` for target directory (leave empty for root)
-
-#### OneDrive
-```bash
-curl -X POST http://localhost/api/v1/targets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "OneDrive Scans",
-    "type": "OneDrive",
-    "config": {
-      "access_token": "EwBwA8l6...",
-      "folder_path": "/Documents/Scans",
-      "connection": "/Documents/Scans"
-    }
-  }'
-```
-
-**Getting OAuth2 Token:**
-1. Register app in [Azure AD Portal](https://portal.azure.com/)
-2. Add Microsoft Graph API permissions (Files.ReadWrite)
-3. Generate access token via OAuth2 flow
-4. Set `folder_path` for target directory
-
-#### Nextcloud
-```bash
-curl -X POST http://localhost/api/v1/targets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Nextcloud Archive",
-    "type": "Nextcloud",
-    "config": {
-      "webdav_url": "https://cloud.example.com/remote.php/dav/files/username/",
-      "username": "scanner",
-      "password": "app-password",
-      "upload_path": "/Scans",
-      "connection": "https://cloud.example.com"
-    }
-  }'
-```
-
-**Setup:**
-1. Get WebDAV URL from Nextcloud: Settings → WebDAV
-2. Create app password: Settings → Security → Devices & sessions
-3. Set `upload_path` for target directory (default: /Scans)
-
-### Connection Testing
-All targets are automatically tested before saving:
-```bash
-curl -X POST http://localhost/api/v1/targets/{target_id}/test
-```
-
-Or use the Web UI:
-1. Configure target details
-2. Click "Test & Save" to validate connection first
-3. Or click "Save without test" if server is temporarily offline
-
-### Advanced Features
-
-### Real-Time Updates (WebSocket)
-Scan2Target supports WebSocket connections for real-time job status updates:
-
-```javascript
-const ws = new WebSocket('ws://YOUR_SERVER_IP/api/v1/ws');
-
-ws.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  
-  if (message.type === 'job_update') {
-    console.log('Job updated:', message.data);
-    // message.data contains: id, status, device_id, target_id, etc.
-  }
-};
-```
-
-**Benefits:**
-- ⚡ Instant status updates (no polling delay)
-- 📉 Reduced server load
-- 🔋 Better battery life for mobile devices
-
-The Web UI automatically uses WebSocket for live updates with polling as fallback.
-
-### Webhook Notifications
-Get notified when scans complete:
-```bash
-curl -X POST http://localhost/api/v1/scan/start \
-  -H "Content-Type: application/json" \
-  -d '{
-    "device_id": "scanner_id",
-    "profile_id": "document_200_pdf",
-    "target_id": "target_id",
-    "webhook_url": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
-  }'
-```
-
-Webhook payload:
-```json
-{
-  "job_id": "uuid",
-  "status": "completed",
-  "timestamp": "2025-11-30T12:00:00+00:00",
-  "metadata": {
-    "pages": 5,
-    "file_size": 245678,
-    "format": "pdf",
-    "profile": "document_200_pdf",
-    "thumbnail": "/tmp/scan_thumb.jpg"
-  }
-}
-```
-
-### Live Scan Previews
-Automatic thumbnail generation and display:
-- 400x400px preview created for each scan
-- Displayed at 50% size in Active Scans section
-- Click thumbnail to expand to 100% (click again to shrink)
-- Available in webhook notification metadata
-- Stored temporarily with scan output (cleaned up after 7 days)
-
-### Progressive Web App (PWA)
-Install Scan2Target as native app:
-1. Open web interface in browser
-2. Click "Install" prompt or browser menu → "Install App"
-3. Launch from home screen/desktop
-4. Works offline with cached interface
-5. Push notifications for scan completion (future)
-
-**Features:**
-- Standalone app window (no browser UI)
-- Home screen icon
-- Offline support
-- Fast loading with Service Worker cache
-- Mobile-optimized interface
-
-### Automatic Document Detection
-Profiles support automatic optimization:
-- Auto paper size detection
-- Color/grayscale auto-selection
-- DPI recommendation based on content
-- Blank page detection (ADF mode)
-
-## Maintenance & Cleanup
-
-### Automatic Cleanup
-Scan2Target automatically manages disk space:
-- **Successful scans:** Files deleted immediately after upload
-- **Thumbnails:** Kept 7 days for UI preview (10-50 KB each)
-- **Failed uploads:** Kept 30 days for manual retry
-- **Cron job:** Runs daily at 3:00 AM (set up by installer)
-
-### Manual Cleanup
-```bash
-# Run cleanup manually
-cd /opt/scan2target
-python3 -m app.core.cleanup
-
-# Check disk usage
-curl http://localhost/api/v1/maintenance/disk-usage
-
-# Trigger cleanup via API
-curl -X POST http://localhost/api/v1/maintenance/cleanup
-```
-
-### View Cleanup Logs
-```bash
-tail -f /var/log/scan2target-cleanup.log
-```
-
-### Upload Retry
-If upload fails (e.g., network issue):
-1. Scan completes successfully, file stored locally
-2. Error shown in History and Active Scans with separate status indicators:
-   - Scan: ✅ Done
-   - Upload: ❌ Failed
-3. Click "🔄 Retry" button in Active Scans or "🔄 Retry Upload" in History
-4. System attempts upload with 3 retries (exponential backoff: 2s, 4s, 8s)
-5. File deleted automatically after successful retry
-
-**Status Display:**
-- **During Scan:** Scan: 🔄 Running, Upload: ⏸️ Waiting
-- **Scan Failed:** Scan: ❌ Failed, Upload: ⏸️ Skipped
-- **Upload Failed:** Scan: ✅ Done, Upload: ❌ Failed (with Retry button)
-- **All Success:** Scan: ✅ Done, Upload: ✅ Done
-
-## Service Management
-
-```bash
-# Start service
-sudo systemctl start scan2target
-
-# Stop service
-sudo systemctl stop scan2target
-
-# Restart service
-sudo systemctl restart scan2target
-
-# View status
-sudo systemctl status scan2target
-
-# View logs
-sudo journalctl -u scan2target -f
-
-# Disable auto-start
-sudo systemctl disable scan2target
-```
-
-## Internationalization (i18n)
-
-Scan2Target Web UI supports multiple languages:
-
-**Available Languages:**
-- 🇬🇧 English (EN) - Default
-- 🇩🇪 German (DE)
-
-**Features:**
-- Language selector in top-right corner of navigation bar
-- Preference saved in browser localStorage
-- Instant language switching (no page reload)
-- All UI elements translated (navigation, buttons, status messages, etc.)
-
-**Adding New Languages:**
-Edit `app/web/src/App.svelte` and add your language to the `translations` object:
-```javascript
-const translations = {
-  en: { /* English translations */ },
-  de: { /* German translations */ },
-  fr: { /* Your French translations */ }
-};
-```
-
-Then add the language option to NavBar.svelte dropdown.
-
-## Home Assistant Integration
-
-Scan2Target's open API makes integration easy:
-
-```yaml
-# configuration.yaml
-rest_command:
-  scan2target_quick_scan:
-    url: "http://SERVER_IP/api/v1/scan/start"
-    method: POST
-    content_type: "application/json"
-    payload: >
-      {
-        "device_id": "airscan:escl:HP_ENVY:http://...",
-        "profile_id": "document_200_pdf",
-        "target_id": "nas_documents"
-      }
-
-button:
-  - platform: template
-    name: "Quick Document Scan"
-    icon: mdi:scanner
-    press:
-      - service: rest_command.scan2target_quick_scan
-
-sensor:
-  - platform: rest
-    name: Scan2Target Active Jobs
-    resource: "http://SERVER_IP/api/v1/history"
-    value_template: >
-      {{ value_json | selectattr('status', 'in', ['queued', 'running']) | list | length }}
-    scan_interval: 5
-```
-
-## New Features
-
-### 🔍 Scan Preview
-Get a quick low-resolution preview before running the full scan:
-
-```bash
-curl -X POST http://localhost/api/v1/scan/preview \
-  -H "Content-Type: application/json" \
-  -d '{"device_id": "scanner_id"}'
-```
-
-**Features:**
-- 100 DPI grayscale preview (fast scan in ~3-5 seconds)
-- Base64-encoded JPEG returned in response
-- Perfect for checking document alignment
-- Available in Web UI with "Preview Scan" button
-
-**Web UI:**
-1. Select scanner
-2. Click "Preview Scan" button
-3. View low-res preview in modal
-4. Click "Proceed to Full Scan" or adjust document and preview again
-
-### 📊 Statistics & Dashboard
-Comprehensive scan analytics and insights:
-
-```bash
-# Overview statistics
-curl http://localhost/api/v1/stats/overview
-
-# Timeline (last 30 days)
-curl http://localhost/api/v1/stats/timeline?days=30
-
-# Scanner usage stats
-curl http://localhost/api/v1/stats/scanners
-
-# Target usage stats
-curl http://localhost/api/v1/stats/targets
-
-# Hourly distribution
-curl http://localhost/api/v1/stats/hourly
-```
-
-**Dashboard Metrics:**
-- 📈 Total scans (all time, today, this week, this month)
-- ✅ Success rate percentage
-- 📊 Average scans per day
-- 🏆 Most used scanner and target
-- 📅 Daily timeline (last 30 days with success/failure breakdown)
-- 🕐 Hourly distribution (scan activity by hour of day 0-23)
-- 📱 Per-scanner and per-target statistics
-
-**Web UI Dashboard:**
-- Visual stat cards with key metrics
-- Timeline table showing daily scan counts
-- Bar chart for hourly distribution
-- Scanner and target usage lists with success rates
-
-### ☁️ Cloud Storage Support
-Upload scans directly to cloud storage providers:
-
-**Supported Providers:**
-- **Google Drive** - OAuth2 authentication, specify folder ID
-- **Dropbox** - OAuth2 authentication, folder path
-- **OneDrive** - OAuth2 via Microsoft Graph API
-- **Nextcloud** - WebDAV authentication
-
-See "Cloud Storage Targets" section above for configuration examples.
-
-## API Endpoints
-
-### Scanner Management
-- `GET /api/v1/devices` - List all devices
-- `POST /api/v1/devices/discover` - Discover scanners
-- `POST /api/v1/devices/{id}/favorite` - Toggle favorite
-- `DELETE /api/v1/devices/{id}` - Remove device
-
-### Scan Operations
-- `POST /api/v1/scan/start` - Start scan job
-- `POST /api/v1/scan/preview` - 🆕 Get low-res preview scan
-- `GET /api/v1/scan/profiles` - List scan profiles
-- `GET /api/v1/history` - List scan history
-- `POST /api/v1/history/{job_id}/retry-upload` - Retry failed upload
-
-### Target Management
-- `GET /api/v1/targets` - List targets
-- `POST /api/v1/targets` - Create target (auto-validates connection)
-- `POST /api/v1/targets/{id}/test` - Test target connection
-- `PUT /api/v1/targets/{id}` - Update target
-- `DELETE /api/v1/targets/{id}` - Delete target
-
-### Statistics & Analytics
-- `GET /api/v1/stats/overview` - 🆕 Overview statistics
-- `GET /api/v1/stats/timeline` - 🆕 Daily scan timeline
-- `GET /api/v1/stats/scanners` - 🆕 Scanner usage stats
-- `GET /api/v1/stats/targets` - 🆕 Target usage stats
-- `GET /api/v1/stats/hourly` - 🆕 Hourly distribution
-
-### Maintenance
-- `GET /api/v1/maintenance/disk-usage` - Get disk usage stats
-- `POST /api/v1/maintenance/cleanup` - Trigger manual cleanup
-
-### WebSocket (Real-Time Updates)
-- `WS /api/v1/ws` - WebSocket endpoint for live job and scanner updates
-
-Full API documentation: `http://YOUR_SERVER_IP/docs`
+**⚠️ Security Notes:**
+- Change default password immediately
+- Set encryption key in production
+- Use HTTPS via reverse proxy (Caddy/nginx)
+- Enable `SCAN2TARGET_REQUIRE_AUTH=true` for mandatory auth

@@ -19,6 +19,22 @@ async def list_history():
     return result
 
 
+@router.delete("/")
+async def clear_history():
+    """Clear all completed jobs from history."""
+    try:
+        job_manager = JobManager()
+        # Only delete completed jobs, keep active ones
+        deleted_count = job_manager.clear_completed_jobs()
+        return {
+            "status": "success",
+            "message": f"Deleted {deleted_count} completed jobs",
+            "deleted_count": deleted_count
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/{job_id}/retry-upload")
 async def retry_upload(job_id: str):
     """

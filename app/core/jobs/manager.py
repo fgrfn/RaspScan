@@ -78,3 +78,7 @@ class JobManager:
 
     def list_history(self) -> List[JobRecord]:
         return self.repo.list()
+    
+    def clear_completed_jobs(self) -> int:
+        """Delete all completed and failed jobs from history."""
+        return self.repo.clear_completed()
