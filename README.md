@@ -247,13 +247,15 @@ curl -X POST http://localhost/api/v1/targets \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Email to Archive",
-    "type": "EMAIL",
+    "type": "Email",
     "config": {
-      "to": "archive@example.com",
+      "connection": "archive@example.com",
       "smtp_host": "smtp.gmail.com",
       "smtp_port": 587,
-      "smtp_user": "scanner@example.com",
-      "smtp_password": "app-password"
+      "username": "scanner@example.com",
+      "password": "app-password",
+      "from": "scanner@example.com",
+      "use_tls": true
     }
   }'
 ```
@@ -267,10 +269,16 @@ curl -X POST http://localhost/api/v1/targets \
     "type": "SFTP",
     "config": {
       "connection": "user@server.example.com",
+      "host": "server.example.com",
+      "port": 22,
+      "username": "user",
+      "password": "password",
       "remote_path": "/uploads/scans"
     }
   }'
 ```
+
+**Note**: Password is optional - if omitted, SSH key authentication will be used. Requires `sshpass` for password authentication: `sudo apt install sshpass`
 
 ### Paperless-ngx Integration
 ```bash

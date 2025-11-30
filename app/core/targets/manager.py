@@ -146,28 +146,57 @@ class TargetManager:
                 
             elif target.type == 'SFTP':
                 # Test SFTP with ssh
-                host = target.config.get('connection', '')
+                host = target.config.get('host', target.config.get('connection', '').split('@')[-1])
+                port = target.config.get('port', 22)
+                username = target.config.get('username', target.config.get('connection', '').split('@')[0] if '@' in target.config.get('connection', '') else 'root')
+                password = target.config.get('password', '')
+                
                 if not host:
                     return {"status": "error", "message": "Host is required"}
                 
-                result = subprocess.run(
-                    ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', host, 'exit'],
-                    capture_output=True,
-                    timeout=10,
-                    text=True
-                )
-                
-                if result.returncode == 0:
-                    return {"status": "ok"}
-                else:
-                    return {"status": "error", "message": "SSH connection failed. Check host and credentials."}
+                try:
+                    if password:
+                        # Test with password using sshpass
+                        result = subprocess.run(
+                            ['sshpass', '-p', password, 'ssh', '-o', 'StrictHostKeyChecking=no',
+                             '-p', str(port), '-o', 'ConnectTimeout=5', f'{username}@{host}', 'exit'],
+                            capture_output=True,
+                            timeout=10,
+                            text=True
+                        )
+                    else:
+                        # Test with SSH key
+                        result = subprocess.run(
+                            ['ssh', '-o', 'BatchMode=yes', '-p', str(port), '-o', 'ConnectTimeout=5', 
+                             f'{username}@{host}', 'exit'],
+                            capture_output=True,
+                            timeout=10,
+                            text=True
+                        )
+                    
+                    if result.returncode == 0:
+                        return {"status": "ok"}
+                    else:
+                        return {"status": "error", "message": "SSH connection failed. Check host and credentials."}
+                except FileNotFoundError:
+                    if password:
+                        return {"status": "error", "message": "sshpass not installed. Install with: sudo apt install sshpass"}
+                    else:
+                        return {"status": "error", "message": "ssh not installed"}
                 
             elif target.type == 'Email':
-                # Test SMTP connection
+                # Test SMTP connection and authentication
                 smtp_host = target.config.get('smtp_host', 'localhost')
                 smtp_port = target.config.get('smtp_port', 587)
+                username = target.config.get('username')
+                password = target.config.get('password')
+                use_tls = target.config.get('use_tls', True)
                 
                 server = smtplib.SMTP(smtp_host, smtp_port, timeout=5)
+                if use_tls:
+                    server.starttls()
+                if username and password:
+                    server.login(username, password)
                 server.quit()
                 return {"status": "ok"}
                 
@@ -322,17 +351,36 @@ class TargetManager:
     
     def _deliver_sftp(self, target: TargetConfig, file: Path) -> None:
         """Upload file via SFTP."""
-        host = target.config['connection']
+        host = target.config.get('host', target.config['connection'].split('@')[-1] if '@' in target.config['connection'] else target.config['connection'])
+        port = target.config.get('port', 22)
+        username = target.config.get('username', target.config['connection'].split('@')[0] if '@' in target.config['connection'] else 'root')
+        password = target.config.get('password', '')
         remote_path = target.config.get('remote_path', '.')
         
-        # Use sftp command
+        # Build SFTP batch command
         cmd = f'put "{file}" "{remote_path}/{file.name}"'
-        result = subprocess.run(
-            ['sftp', '-b', '-', host],
-            input=cmd.encode(),
-            capture_output=True,
-            timeout=60
-        )
+        
+        if password:
+            # Use sshpass for password authentication
+            try:
+                result = subprocess.run(
+                    ['sshpass', '-p', password, 'sftp', '-o', 'StrictHostKeyChecking=no', 
+                     '-P', str(port), '-b', '-', f'{username}@{host}'],
+                    input=cmd.encode(),
+                    capture_output=True,
+                    timeout=60
+                )
+            except FileNotFoundError:
+                raise Exception("sshpass not installed. Install with: sudo apt install sshpass")
+        else:
+            # Use SSH key authentication (no password)
+            result = subprocess.run(
+                ['sftp', '-P', str(port), '-b', '-', f'{username}@{host}'],
+                input=cmd.encode(),
+                capture_output=True,
+                timeout=60
+            )
+        
         if result.returncode != 0:
             raise Exception(f"sftp failed: {result.stderr.decode()}")
     

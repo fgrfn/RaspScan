@@ -99,6 +99,26 @@
       testAndSave: 'Test & Save',
       saveWithoutTest: 'Save without test',
       testSaveHint: '💡 "Test & Save" validates the connection before saving. Use "Save without test" if the server is temporarily offline.',
+      remotePath: 'Remote Path',
+      remotePathPlaceholder: '/uploads/scans',
+      remotePathDesc: 'Directory on SFTP server where files will be uploaded',
+      sftpHost: 'SFTP Host',
+      sftpHostPlaceholder: 'server.example.com',
+      sftpPort: 'SFTP Port',
+      sftpPortPlaceholder: '22',
+      smtpHost: 'SMTP Server',
+      smtpHostPlaceholder: 'smtp.gmail.com',
+      smtpPort: 'SMTP Port',
+      smtpPortPlaceholder: '587',
+      emailTo: 'Recipient Email',
+      emailToPlaceholder: 'archive@example.com',
+      emailFrom: 'Sender Email (optional)',
+      emailFromPlaceholder: 'scanner@example.com',
+      useTLS: 'Use TLS/STARTTLS',
+      apiToken: 'API Token',
+      apiTokenPlaceholder: 'Your Paperless-ngx API token',
+      webhookUrl: 'Webhook URL',
+      webhookUrlPlaceholder: 'https://example.com/webhook',
       targetsSubtitle: 'Destinations for scanned documents.',
       historySubtitle: 'Recent scan and print jobs.',
       loadingHistory: '⏳ Loading history...',
@@ -200,6 +220,26 @@
       testAndSave: 'Testen & Speichern',
       saveWithoutTest: 'Ohne Test speichern',
       testSaveHint: '💡 "Testen & Speichern" validiert die Verbindung vor dem Speichern. Verwenden Sie "Ohne Test speichern", wenn der Server vorübergehend offline ist.',
+      remotePath: 'Remote-Pfad',
+      remotePathPlaceholder: '/uploads/scans',
+      remotePathDesc: 'Verzeichnis auf dem SFTP-Server, in das Dateien hochgeladen werden',
+      sftpHost: 'SFTP-Host',
+      sftpHostPlaceholder: 'server.beispiel.de',
+      sftpPort: 'SFTP-Port',
+      sftpPortPlaceholder: '22',
+      smtpHost: 'SMTP-Server',
+      smtpHostPlaceholder: 'smtp.gmail.com',
+      smtpPort: 'SMTP-Port',
+      smtpPortPlaceholder: '587',
+      emailTo: 'Empfänger-E-Mail',
+      emailToPlaceholder: 'archiv@beispiel.de',
+      emailFrom: 'Absender-E-Mail (optional)',
+      emailFromPlaceholder: 'scanner@beispiel.de',
+      useTLS: 'TLS/STARTTLS verwenden',
+      apiToken: 'API-Token',
+      apiTokenPlaceholder: 'Ihr Paperless-ngx API-Token',
+      webhookUrl: 'Webhook-URL',
+      webhookUrlPlaceholder: 'https://beispiel.de/webhook',
       targetsSubtitle: 'Ziele für gescannte Dokumente.',
       historySubtitle: 'Letzte Scan- und Druckaufträge.',
       loadingHistory: '⏳ Verlauf wird geladen...',
@@ -255,6 +295,21 @@
   let targetConnection = '';
   let targetUsername = '';
   let targetPassword = '';
+  
+  // SFTP fields
+  let targetSftpHost = '';
+  let targetSftpPort = '22';
+  let targetRemotePath = '/uploads/scans';
+  
+  // Email fields
+  let targetEmailTo = '';
+  let targetSmtpHost = 'smtp.gmail.com';
+  let targetSmtpPort = '587';
+  let targetEmailFrom = '';
+  let targetUseTLS = true;
+  
+  // Paperless-ngx fields
+  let targetApiToken = '';
   
 
   let discoveredDevices = [];
@@ -326,16 +381,63 @@
     loadProfiles();
   }
   
+  // Profile name translations
+  function translateProfileName(name, lang) {
+    const translations = {
+      'Document @200 DPI (Small)': {
+        de: 'Dokument @200 DPI (Klein)'
+      },
+      'Multi-Page Document (ADF)': {
+        de: 'Mehrseitiges Dokument (ADF)'
+      },
+      'Color @300 DPI (Medium)': {
+        de: 'Farbe @300 DPI (Mittel)'
+      },
+      'Grayscale @150 DPI (Fast)': {
+        de: 'Graustufen @150 DPI (Schnell)'
+      },
+      'Photo @600 DPI (High Quality)': {
+        de: 'Foto @600 DPI (Hohe Qualität)'
+      }
+    };
+    
+    return translations[name]?.[lang] || name;
+  }
+  
+  function translateProfileDescription(desc, lang) {
+    const translations = {
+      'Best for text documents - smallest size': {
+        de: 'Ideal für Textdokumente - kleinste Dateigröße'
+      },
+      'Scan multiple pages from document feeder': {
+        de: 'Mehrere Seiten aus Dokumenteneinzug scannen'
+      },
+      'Good quality for mixed content': {
+        de: 'Gute Qualität für gemischte Inhalte'
+      },
+      'Quick scans, very small size': {
+        de: 'Schnelle Scans, sehr klein'
+      },
+      'Best quality for photos': {
+        de: 'Beste Qualität für Fotos'
+      }
+    };
+    
+    return translations[desc]?.[lang] || desc;
+  }
+
   async function loadProfiles() {
     try {
       const response = await fetch(`${API_BASE}/scan/profiles`);
       if (response.ok) {
         const profiles = await response.json();
-        // Use the name from API directly - it's already well formatted
+        // Store original names and descriptions for translation
         quickProfiles = profiles.map(p => ({
           id: p.id,
-          name: p.name || p.id,
-          description: p.description || '',
+          nameOriginal: p.name || p.id,
+          name: translateProfileName(p.name || p.id, currentLang),
+          descriptionOriginal: p.description || '',
+          description: translateProfileDescription(p.description || '', currentLang),
           source: p.source || 'Flatbed'
         }));
         console.log('Loaded profiles from API:', quickProfiles.length);
@@ -344,6 +446,23 @@
       console.error('Failed to load profiles:', error);
       // Keep default profiles on error
     }
+  }
+  
+  // Reaktiv: Profile-Namen bei Sprachwechsel aktualisieren
+  $: if (quickProfiles.length > 0 && currentLang) {
+    quickProfiles = quickProfiles.map(p => ({
+      ...p,
+      name: translateProfileName(p.nameOriginal, currentLang),
+      description: translateProfileDescription(p.descriptionOriginal, currentLang)
+    }));
+  }
+  
+  // Reactive statement to translate profile names when language changes
+  $: if (quickProfiles.length > 0 && currentLang) {
+    quickProfiles = quickProfiles.map(p => ({
+      ...p,
+      name: translateProfileName(p.nameOriginal || p.name, currentLang)
+    }));
   }
 
   async function loadDevices() {
@@ -544,18 +663,58 @@
   }
 
   async function saveTarget(skipValidation = false) {
-    if (!targetName || !targetConnection) {
-      alert('Please fill in all required fields');
+    if (!targetName) {
+      alert('Please enter a target name');
       return;
     }
 
-    const config = {
-      connection: targetConnection
-    };
+    const config = {};
 
     if (targetType === 'SMB') {
+      if (!targetConnection || !targetUsername) {
+        alert('Please fill in connection and username for SMB');
+        return;
+      }
+      config.connection = targetConnection;
       config.username = targetUsername;
       config.password = targetPassword;
+    } else if (targetType === 'SFTP') {
+      if (!targetSftpHost || !targetUsername) {
+        alert('Please fill in SFTP host and username');
+        return;
+      }
+      // Store as user@host for compatibility with existing backend format
+      config.connection = `${targetUsername}@${targetSftpHost}`;
+      config.host = targetSftpHost;
+      config.port = parseInt(targetSftpPort) || 22;
+      config.username = targetUsername;
+      config.password = targetPassword;
+      config.remote_path = targetRemotePath || '/uploads/scans';
+    } else if (targetType === 'Email') {
+      if (!targetEmailTo || !targetSmtpHost) {
+        alert('Please fill in recipient email and SMTP host');
+        return;
+      }
+      config.connection = targetEmailTo;
+      config.smtp_host = targetSmtpHost;
+      config.smtp_port = parseInt(targetSmtpPort) || 587;
+      config.username = targetUsername;
+      config.password = targetPassword;
+      if (targetEmailFrom) config.from = targetEmailFrom;
+      config.use_tls = targetUseTLS;
+    } else if (targetType === 'Paperless-ngx') {
+      if (!targetConnection || !targetApiToken) {
+        alert('Please fill in URL and API token');
+        return;
+      }
+      config.connection = targetConnection;
+      config.api_token = targetApiToken;
+    } else if (targetType === 'Webhook') {
+      if (!targetConnection) {
+        alert('Please enter webhook URL');
+        return;
+      }
+      config.connection = targetConnection;
     }
 
     const payload = {
@@ -584,10 +743,20 @@
 
       if (response.ok) {
         alert('✅ Target saved successfully');
+        // Reset all form fields
         targetName = '';
         targetConnection = '';
         targetUsername = '';
         targetPassword = '';
+        targetSftpHost = '';
+        targetSftpPort = '22';
+        targetRemotePath = '/uploads/scans';
+        targetEmailTo = '';
+        targetSmtpHost = 'smtp.gmail.com';
+        targetSmtpPort = '587';
+        targetEmailFrom = '';
+        targetUseTLS = true;
+        targetApiToken = '';
         await loadTargets();
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
@@ -1247,14 +1416,53 @@
           </select>
           <label for="target-name">{t.name}</label>
           <input id="target-name" type="text" placeholder={t.namePlaceholder} bind:value={targetName} />
-          <label for="target-connection">{t.connection}</label>
-          <input id="target-connection" type="text" placeholder={t.connectionPlaceholder} bind:value={targetConnection} />
           
           {#if targetType === 'SMB'}
+            <label for="target-connection">{t.connection}</label>
+            <input id="target-connection" type="text" placeholder="//nas/share" bind:value={targetConnection} />
             <label for="target-username">{t.username}</label>
             <input id="target-username" type="text" placeholder={t.usernamePlaceholder} bind:value={targetUsername} />
             <label for="target-password">{t.password}</label>
             <input id="target-password" type="password" placeholder={t.passwordPlaceholder} bind:value={targetPassword} />
+          {:else if targetType === 'SFTP'}
+            <label for="target-sftp-host">{t.sftpHost}</label>
+            <input id="target-sftp-host" type="text" placeholder={t.sftpHostPlaceholder} bind:value={targetSftpHost} />
+            <label for="target-sftp-port">{t.sftpPort}</label>
+            <input id="target-sftp-port" type="number" placeholder={t.sftpPortPlaceholder} bind:value={targetSftpPort} />
+            <label for="target-username">{t.username}</label>
+            <input id="target-username" type="text" placeholder={t.usernamePlaceholder} bind:value={targetUsername} />
+            <label for="target-password">{t.password}</label>
+            <input id="target-password" type="password" placeholder={t.passwordPlaceholder} bind:value={targetPassword} />
+            <label for="target-remote-path">{t.remotePath}</label>
+            <input id="target-remote-path" type="text" placeholder={t.remotePathPlaceholder} bind:value={targetRemotePath} />
+            <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">{t.remotePathDesc}</p>
+          {:else if targetType === 'Email'}
+            <label for="target-email-to">{t.emailTo}</label>
+            <input id="target-email-to" type="email" placeholder={t.emailToPlaceholder} bind:value={targetEmailTo} />
+            <label for="target-smtp-host">{t.smtpHost}</label>
+            <input id="target-smtp-host" type="text" placeholder={t.smtpHostPlaceholder} bind:value={targetSmtpHost} />
+            <label for="target-smtp-port">{t.smtpPort}</label>
+            <input id="target-smtp-port" type="number" placeholder={t.smtpPortPlaceholder} bind:value={targetSmtpPort} />
+            <label for="target-username">{t.username}</label>
+            <input id="target-username" type="text" placeholder={t.usernamePlaceholder} bind:value={targetUsername} />
+            <label for="target-password">{t.password}</label>
+            <input id="target-password" type="password" placeholder={t.passwordPlaceholder} bind:value={targetPassword} />
+            <label for="target-email-from">{t.emailFrom}</label>
+            <input id="target-email-from" type="email" placeholder={t.emailFromPlaceholder} bind:value={targetEmailFrom} />
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="checkbox" bind:checked={targetUseTLS} />
+              {t.useTLS}
+            </label>
+          {:else if targetType === 'Paperless-ngx'}
+            <label for="target-connection">{t.connection}</label>
+            <input id="target-connection" type="text" placeholder="http://paperless.local:8000" bind:value={targetConnection} />
+            <label for="target-api-token">{t.apiToken}</label>
+            <input id="target-api-token" type="password" placeholder={t.apiTokenPlaceholder} bind:value={targetApiToken} />
+            <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Get token from Paperless-ngx: Settings → API Tokens</p>
+          {:else if targetType === 'Webhook'}
+            <label for="target-connection">{t.webhookUrl}</label>
+            <input id="target-connection" type="url" placeholder={t.webhookUrlPlaceholder} bind:value={targetConnection} />
+            <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Scanned file will be POSTed to this URL</p>
           {/if}
           
           <div style="display: flex; gap: 0.5rem;">

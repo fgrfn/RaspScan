@@ -27,6 +27,7 @@ install_packages() {
         sane-airscan \
         smbclient \
         ssh \
+        sshpass \
         imagemagick \
         nodejs \
         npm
