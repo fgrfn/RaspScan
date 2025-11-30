@@ -15,6 +15,7 @@
   let selectedScanner = '';
   let selectedProfile = '';
   let selectedTarget = '';
+  let scanFilename = '';
   let selectedPrinter = '';
   let printCopies = 1;
   let printFile = null;
@@ -136,7 +137,7 @@
           device_id: selectedScanner,
           profile_id: selectedProfile || quickProfiles[0].id,
           target_id: selectedTarget,
-          filename_prefix: 'scan'
+          filename_prefix: scanFilename || 'scan'
         })
       });
 
@@ -556,6 +557,15 @@
               <option value={target.id}>{target.name}</option>
             {/each}
           </select>
+          <label for="filename-input">Filename (optional)</label>
+          <input 
+            id="filename-input" 
+            type="text" 
+            bind:value={scanFilename} 
+            placeholder="e.g. invoice_2025" 
+            style="width: 100%; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;"
+          />
+          <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Leave empty for auto-generated name (scan_UUID)</p>
           <button class="primary block" on:click={startScan}>Start scan</button>
         </div>
       </div>
