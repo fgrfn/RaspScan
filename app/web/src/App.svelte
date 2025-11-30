@@ -917,16 +917,34 @@
           <!-- Status breakdown -->
           <div style="margin-bottom: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-              <span class="badge success" style="font-size: 0.875rem;">✅ Done</span>
+              <span class={`badge ${lastCompletedJob.status === 'failed' ? 'danger' : 'success'}`} style="font-size: 0.875rem;">
+                {lastCompletedJob.status === 'failed' ? '❌ Failed' : '✅ Done'}
+              </span>
               <span style="font-size: 0.875rem; font-weight: 500;">Scan</span>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span class={`badge ${lastCompletedJob.message ? 'danger' : 'success'}`} style="font-size: 0.875rem;">
-                {lastCompletedJob.message ? '❌ Failed' : '✅ Done'}
+              <span class={`badge ${lastCompletedJob.status === 'failed' ? '' : lastCompletedJob.message ? 'danger' : 'success'}`} 
+                    style="font-size: 0.875rem; {lastCompletedJob.status === 'failed' ? 'opacity: 0.5;' : ''}">
+                {lastCompletedJob.status === 'failed' ? '⏸️ Skipped' : lastCompletedJob.message ? '❌ Failed' : '✅ Done'}
               </span>
-              <span style="font-size: 0.875rem; font-weight: 500;">Upload</span>
+              <span style="font-size: 0.875rem; font-weight: 500; {lastCompletedJob.status === 'failed' ? 'opacity: 0.5;' : ''}">Upload</span>
+              {#if lastCompletedJob.status === 'completed' && lastCompletedJob.message}
+                <button 
+                  class="primary small" 
+                  style="margin-left: auto; font-size: 0.75rem; padding: 0.25rem 0.5rem;"
+                  on:click={() => retryUpload(lastCompletedJob.id)}
+                >
+                  🔄 Retry
+                </button>
+              {/if}
             </div>
           </div>
+          
+          {#if lastCompletedJob.message}
+            <div style="margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--danger); padding: 0.5rem; background: rgba(255, 100, 100, 0.1); border-radius: 4px; border: 1px solid rgba(255, 100, 100, 0.3);">
+              {lastCompletedJob.message}
+            </div>
+          {/if}
           
           <div style="font-size: 0.875rem;">
             <div style="margin-bottom: 0.25rem;">
