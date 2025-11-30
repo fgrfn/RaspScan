@@ -146,6 +146,14 @@ async def test_target(target_id: str):
     """Test connectivity to a target."""
     try:
         result = TargetManager().test_target(target_id)
+        # If the result has an error status, return 400 with the message
+        if result.get("status") == "error":
+            raise HTTPException(status_code=400, detail=result.get("message", "Connection test failed"))
         return result
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to test target: {str(e)}")
+        # Catch any unexpected errors
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Test failed: {str(e)}")

@@ -62,7 +62,7 @@ async def get_statistics_overview():
         cursor.execute("""
             SELECT 
                 COUNT(*) as total,
-                SUM(CASE WHEN status = 'completed' AND message IS NULL THEN 1 ELSE 0 END) as successful
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as successful
             FROM jobs 
             WHERE job_type = 'scan'
         """)
@@ -134,8 +134,8 @@ async def get_scan_timeline(days: int = 30):
             SELECT 
                 date(created_at) as date,
                 COUNT(*) as count,
-                SUM(CASE WHEN status = 'completed' AND message IS NULL THEN 1 ELSE 0 END) as successful,
-                SUM(CASE WHEN status = 'failed' OR message IS NOT NULL THEN 1 ELSE 0 END) as failed
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
             FROM jobs 
             WHERE job_type = 'scan'
             AND date(created_at) >= date('now', ? || ' days')
@@ -168,7 +168,7 @@ async def get_scanner_statistics():
                 j.device_id,
                 COALESCE(d.name, j.device_id) as scanner_name,
                 COUNT(*) as total_scans,
-                SUM(CASE WHEN j.status = 'completed' AND j.message IS NULL THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN j.status = 'completed' THEN 1 ELSE 0 END) as successful,
                 SUM(CASE WHEN j.status = 'failed' THEN 1 ELSE 0 END) as failed,
                 MAX(j.created_at) as last_used
             FROM jobs j
@@ -206,7 +206,8 @@ async def get_target_statistics():
                 COALESCE(t.name, j.target_id) as target_name,
                 COUNT(*) as total_deliveries,
                 SUM(CASE WHEN j.status = 'completed' AND j.message IS NULL THEN 1 ELSE 0 END) as successful,
-                SUM(CASE WHEN j.message IS NOT NULL THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN j.status = 'completed' AND j.message IS NOT NULL THEN 1 ELSE 0 END) as delivery_failed,
+                SUM(CASE WHEN j.status = 'failed' THEN 1 ELSE 0 END) as failed,
                 MAX(j.created_at) as last_used
             FROM jobs j
             LEFT JOIN targets t ON j.target_id = t.id
@@ -221,6 +222,7 @@ async def get_target_statistics():
                 "target": row['target_name'],
                 "total_deliveries": row['total_deliveries'],
                 "successful": row['successful'],
+                "delivery_failed": row['delivery_failed'],
                 "failed": row['failed'],
                 "success_rate": round((row['successful'] / row['total_deliveries'] * 100), 1) if row['total_deliveries'] > 0 else 0,
                 "last_used": row['last_used']

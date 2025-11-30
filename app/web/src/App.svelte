@@ -580,6 +580,60 @@
     loadDevices();
   }
 
+  // Format scanner name to show friendly display name instead of full URI
+  function formatScannerName(scannerUri) {
+    if (!scannerUri) return 'Unknown Scanner';
+    
+    // Extract name from various scanner URI formats
+    // Format: airscan:escl:HP_ENVY_6400_series:http://10.10.30.146:8080/eSCL/
+    // Format: sane:net:scanner_name
+    
+    // Try to extract IP address for display
+    const ipMatch = scannerUri.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+    const ip = ipMatch ? ipMatch[1] : '';
+    
+    // Extract model name from URI
+    if (scannerUri.includes('airscan:escl:') || scannerUri.includes('eSCL')) {
+      // AirScan/eSCL format: airscan:escl:HP_ENVY_6400_series:http://...
+      const parts = scannerUri.split(':');
+      if (parts.length >= 3) {
+        const modelName = parts[2]
+          .replace(/_/g, ' ')  // Replace underscores with spaces
+          .replace(/\b\w/g, c => c.toUpperCase());  // Capitalize words
+        return ip ? `${modelName} (${ip})` : modelName;
+      }
+    }
+    
+    // SANE network scanner format: sane:net:hostname or device name
+    if (scannerUri.includes('sane:')) {
+      const parts = scannerUri.split(':');
+      if (parts.length >= 2) {
+        const name = parts[parts.length - 1]
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, c => c.toUpperCase());
+        return ip ? `${name} (${ip})` : name;
+      }
+    }
+    
+    // If no pattern matches, try to extract a readable part
+    const cleanName = scannerUri
+      .replace(/^(airscan|sane|escl|net):/gi, '')
+      .replace(/https?:\/\/[^\s]+/g, '')
+      .replace(/[_:]/g, ' ')
+      .trim();
+    
+    if (cleanName && ip) {
+      return `${cleanName} (${ip})`;
+    } else if (cleanName) {
+      return cleanName;
+    } else if (ip) {
+      return `Scanner (${ip})`;
+    }
+    
+    // Last resort: return original URI
+    return scannerUri;
+  }
+
   async function loadData() {
     // Load devices first (most important)
     loadDevices();
@@ -1038,7 +1092,10 @@
       });
 
       if (response.ok) {
-        alert('✅ Target saved successfully');
+        const successMsg = skipValidation 
+          ? '✅ Target gespeichert (ohne Test)'
+          : '✅ Verbindungstest erfolgreich - Target gespeichert';
+        alert(successMsg);
         // Reset all form fields
         targetName = '';
         targetConnection = '';
@@ -1062,11 +1119,15 @@
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         console.error('Failed to save target:', response.status, errorData);
-        alert(`❌ Failed to save target: ${errorData.detail || response.statusText}`);
+        
+        // Show detailed error message from backend
+        const errorMsg = errorData.detail || response.statusText || 'Unknown error';
+        const prefix = skipValidation ? '❌ Fehler beim Speichern' : '❌ Verbindungstest fehlgeschlagen';
+        alert(`${prefix}:\n\n${errorMsg}`);
       }
     } catch (error) {
       console.error('Save target error:', error);
-      alert(`❌ Failed to save target: ${error.message}`);
+      alert(`❌ Fehler: ${error.message}`);
     }
   }
 
@@ -1175,7 +1236,10 @@
   }
 
   async function removeTarget(targetId) {
-    if (!confirm(`Remove target "${targetId}"?`)) {
+    const target = targets.find(t => t.id === targetId);
+    const targetName = target ? target.name : targetId;
+    
+    if (!confirm(`Target "${targetName}" wirklich entfernen?`)) {
       return;
     }
     
@@ -1185,15 +1249,16 @@
       });
       
       if (response.ok) {
-        await loadData();
-        alert('✅ Target removed successfully');
+        // Remove from local array immediately for instant UI update
+        targets = targets.filter(t => t.id !== targetId);
+        alert('✅ Target erfolgreich entfernt');
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        alert(`❌ Failed to remove target: ${errorData.detail || response.statusText}`);
+        alert(`❌ Fehler beim Entfernen: ${errorData.detail || response.statusText}`);
       }
     } catch (error) {
       console.error('Remove target error:', error);
-      alert(`❌ Failed to remove target: ${error.message}`);
+      alert(`❌ Fehler beim Entfernen: ${error.message}`);
     }
   }
 
@@ -1990,7 +2055,7 @@
         <div class="grid two-cols" style="margin-bottom: 2rem;">
           <div class="card" style="padding: 1.5rem;">
             <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--muted);">{t.mostUsedScanner}</div>
-            <div style="font-size: 1.25rem; font-weight: 600;">{statsOverview.most_used_scanner || 'N/A'}</div>
+            <div style="font-size: 1.25rem; font-weight: 600;">{statsOverview.most_used_scanner ? formatScannerName(statsOverview.most_used_scanner) : 'N/A'}</div>
           </div>
           <div class="card" style="padding: 1.5rem;">
             <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--muted);">{t.mostUsedTarget}</div>
@@ -2026,7 +2091,7 @@
           <ul class="list">
             {#each statsScanners as scanner}
               <li>
-                <div class="list-title">{scanner.scanner}</div>
+                <div class="list-title">{formatScannerName(scanner.scanner)}</div>
                 <div class="muted">
                   {t.scans}: {scanner.total_scans} · 
                   {t.successful}: {scanner.successful} ({scanner.success_rate}%) · 

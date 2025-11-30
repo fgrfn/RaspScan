@@ -244,7 +244,18 @@ class TargetManager:
                     # Try to upload the test file
                     username = target.config.get('username', 'guest')
                     password = target.config.get('password', '')
-                    share_path = target.config['connection']
+                    share_path = target.config.get('connection', '')
+                    
+                    if not share_path:
+                        return {"target_id": target_id, "status": "error", "message": "Connection string is missing"}
+                    
+                    # Normalize path format
+                    share_path = share_path.replace('\\', '/')
+                    if not share_path.startswith('//'):
+                        share_path = '//' + share_path
+                    
+                    print(f"[SMB Test] Testing upload to: {share_path}")
+                    print(f"[SMB Test] Username: {username}")
                     
                     # Test file name
                     test_filename = f".scan2target_test_{int(time.time())}.txt"
@@ -257,8 +268,32 @@ class TargetManager:
                         timeout=10
                     )
                     
-                    status = "ok" if result.returncode == 0 else "error"
-                    message = None if status == "ok" else result.stderr.strip()
+                    print(f"[SMB Test] Exit code: {result.returncode}")
+                    print(f"[SMB Test] stdout: {result.stdout[:300]}")
+                    print(f"[SMB Test] stderr: {result.stderr[:300]}")
+                    
+                    if result.returncode == 0:
+                        status = "ok"
+                        message = None
+                    else:
+                        status = "error"
+                        # Combine stderr and stdout for better error messages
+                        error_output = (result.stderr + result.stdout).strip()
+                        
+                        # Parse common SMB errors
+                        if "NT_STATUS_LOGON_FAILURE" in error_output:
+                            message = "Login failed - check username and password"
+                        elif "NT_STATUS_BAD_NETWORK_NAME" in error_output:
+                            message = f"Share not found: {share_path}"
+                        elif "NT_STATUS_ACCESS_DENIED" in error_output:
+                            message = f"Access denied - check permissions for user {username}"
+                        elif "NT_STATUS_HOST_UNREACHABLE" in error_output or "NT_STATUS_IO_TIMEOUT" in error_output:
+                            message = "Server not reachable - check IP address and network"
+                        elif "NT_STATUS_OBJECT_NAME_NOT_FOUND" in error_output:
+                            message = "Cannot create file - check share path and permissions"
+                        else:
+                            # Generic error with cleaned message
+                            message = error_output[:200] if error_output else "Connection test failed"
                     
                 finally:
                     # Clean up test file
