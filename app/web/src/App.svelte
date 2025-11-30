@@ -106,8 +106,8 @@
   }
 
   function updateStats() {
-    const todayScans = history.filter(h => h.type === 'Scan' && isToday(h.ts)).length;
-    const activeJobs = history.filter(h => h.status === 'In queue' || h.status === 'processing').length;
+    const todayScans = history.filter(h => h.job_type === 'scan' && isToday(h.created_at)).length;
+    const activeJobs = history.filter(h => h.status === 'queued' || h.status === 'running').length;
 
     statCards = [
       { label: 'Scanners found', value: String(scanners.length).padStart(2, '0'), icon: '📑', sub: 'eSCL + SANE' },
@@ -638,11 +638,11 @@
         {#each history as job}
           <div class="table-row">
             <span>{job.id}</span>
-            <span>{job.type}</span>
-            <span>{job.device}</span>
-            <span>{job.target}</span>
-            <span>{job.ts}</span>
-            <span class={`badge ${job.status === 'Done' || job.status === 'completed' ? 'success' : 'warning'}`}>{job.status}</span>
+            <span>{job.job_type}</span>
+            <span>{job.device_id || 'N/A'}</span>
+            <span>{job.target_id || 'N/A'}</span>
+            <span>{new Date(job.created_at).toLocaleString()}</span>
+            <span class={`badge ${job.status === 'completed' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'}`}>{job.status}</span>
           </div>
         {/each}
       </div>
