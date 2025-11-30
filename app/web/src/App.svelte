@@ -14,6 +14,7 @@
       brand: 'RaspScan',
       dashboard: 'Dashboard',
       scan: 'Scan',
+      activeScansMenu: 'Active Scans',
       targets: 'Targets',
       history: 'History',
       heroTagline: 'Raspberry Pi · FastAPI · Svelte',
@@ -105,12 +106,15 @@
       time: 'Time',
       status: 'Status',
       uploadFailed: '⚠️ Upload failed',
-      retryUpload: '🔄 Retry Upload'
+      retryUpload: '🔄 Retry Upload',
+      pleaseSelectScanner: '⚠️ Please select a scanner below',
+      pleaseSelectTarget: '⚠️ Please select a target below'
     },
     de: {
       brand: 'RaspScan',
       dashboard: 'Dashboard',
       scan: 'Scannen',
+      activeScansMenu: 'Aktive Scans',
       targets: 'Ziele',
       history: 'Verlauf',
       heroTagline: 'Raspberry Pi · FastAPI · Svelte',
@@ -202,7 +206,9 @@
       time: 'Zeit',
       status: 'Status',
       uploadFailed: '⚠️ Upload fehlgeschlagen',
-      retryUpload: '🔄 Upload wiederholen'
+      retryUpload: '🔄 Upload wiederholen',
+      pleaseSelectScanner: '⚠️ Bitte wählen Sie unten einen Scanner aus',
+      pleaseSelectTarget: '⚠️ Bitte wählen Sie unten ein Ziel aus'
     }
   };
   
@@ -263,6 +269,7 @@
   $: navLinks = [
     { label: t.dashboard, href: '#dashboard' },
     { label: t.scan, href: '#scan' },
+    { label: t.activeScansMenu, href: '#active-scans' },
     { label: t.targets, href: '#targets' },
     { label: t.history, href: '#history' }
   ];
@@ -890,7 +897,7 @@
   }
 </script>
 
-<NavBar brand={t.brand} {navLinks} links={navLinks} {currentLang} onLanguageChange={changeLanguage} />
+<NavBar brand={t.brand} links={navLinks} {currentLang} onLanguageChange={changeLanguage} />
 
 <main class="page">
   <section id="dashboard" class="hero">
@@ -899,7 +906,19 @@
       <h1>{t.heroTitle}</h1>
       <p class="lede">{t.heroDescription}</p>
       <div class="actions">
-        <a class="primary" href="#scan">{t.startScan}</a>
+        <button 
+          class="primary" 
+          on:click={startScan}
+          style="font-size: 1.1rem; padding: 1rem 2rem; font-weight: 600;"
+          disabled={!selectedScanner || !selectedTarget}
+        >
+          {t.startScan}
+        </button>
+        {#if !selectedScanner || !selectedTarget}
+          <p class="muted" style="margin-top: 0.5rem; font-size: 0.875rem;">
+            {!selectedScanner ? t.pleaseSelectScanner : t.pleaseSelectTarget}
+          </p>
+        {/if}
       </div>
     </div>
     <div class="card hero-card">
@@ -1052,7 +1071,7 @@
   </SectionCard>
 
   <!-- Active Scans Section -->
-  <SectionCard title={t.activeScans} subtitle={activeJobs.length > 0 ? t.scansInProgress : lastCompletedJob ? t.mostRecentScan : t.noScansYet}>
+  <SectionCard id="active-scans" title={t.activeScans} subtitle={activeJobs.length > 0 ? t.scansInProgress : lastCompletedJob ? t.mostRecentScan : t.noScansYet}>
     {#if activeJobs.length > 0 || lastCompletedJob}
     <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
       {#each activeJobs as job}

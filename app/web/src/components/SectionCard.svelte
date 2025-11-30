@@ -1,10 +1,11 @@
 <script>
+  export let id = '';
   export let title;
   export let subtitle = '';
   export let actions = [];
 </script>
 
-<section class="section-card">
+<section class="section-card" {id}>
   <div class="section-heading">
     <div>
       <h2>{title}</h2>
