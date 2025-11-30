@@ -1427,8 +1427,21 @@
             {#each discoveredScanners as device}
               <li>
                 <div class="list-title">{device.name}</div>
-                <div class="muted">
-                  {device.connection_type || device.type}
+                <div class="muted" style="margin-bottom: 0.5rem;">
+                  {#if device.make && device.model}
+                    <span style="font-weight: 500;">{device.make}</span> {device.model}
+                  {/if}
+                  <br/>
+                  <span style="display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.25rem;">
+                    {#if device.connection_type && device.connection_type.includes('Network')}
+                      🌐
+                    {:else if device.connection_type && device.connection_type.includes('USB')}
+                      🔌
+                    {:else}
+                      📡
+                    {/if}
+                    {device.connection_type || device.type}
+                  </span>
                   {#if device.connection_type && device.connection_type.includes('eSCL')}
                     <span class="badge success" style="margin-left: 0.5rem;">{t.recommended}</span>
                   {/if}
@@ -1437,9 +1450,12 @@
                   {:else}
                     <span class="badge warning" style="margin-left: 0.5rem;">{t.notAddedYet}</span>
                   {/if}
-                </div>
-                <div class="muted small" style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
-                  {device.uri}
+                  {#if device.uri && device.uri.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)}
+                    <br/>
+                    <span style="font-family: monospace; font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem;">
+                      📍 {device.uri.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)[1]}
+                    </span>
+                  {/if}
                 </div>
                 {#if !device.already_added}
                   <button class="primary small" on:click={() => addDiscoveredScanner(device)}>{t.addScanner}</button>
@@ -1952,12 +1968,12 @@
     {:else}
       <div class="table" style="display: block;">
         <div style="display: grid; grid-template-columns: 100px 80px 1fr 1fr 180px 200px; gap: 1rem; padding: 0.75rem 1rem; font-weight: 600; border-bottom: 2px solid var(--border); background: var(--surface-dim);">
-          <span>ID</span>
-          <span>Type</span>
-          <span>Device</span>
-          <span>Target</span>
-          <span>Time</span>
-          <span>Status</span>
+          <span>{t.id}</span>
+          <span>{t.type}</span>
+          <span>{t.device}</span>
+          <span>{t.target}</span>
+          <span>{t.time}</span>
+          <span>{t.status}</span>
         </div>
         {#each history as job}
           <div style="display: grid; grid-template-columns: 100px 80px 1fr 1fr 180px 200px; gap: 1rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); align-items: start;">

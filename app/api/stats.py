@@ -71,10 +71,11 @@ async def get_statistics_overview():
         
         # Most used scanner
         cursor.execute("""
-            SELECT device_id, COUNT(*) as count 
-            FROM jobs 
-            WHERE job_type = 'scan' AND device_id IS NOT NULL
-            GROUP BY device_id 
+            SELECT j.device_id, d.name, COUNT(*) as count 
+            FROM jobs j
+            LEFT JOIN devices d ON j.device_id = d.id
+            WHERE j.job_type = 'scan' AND j.device_id IS NOT NULL
+            GROUP BY j.device_id 
             ORDER BY count DESC 
             LIMIT 1
         """)
@@ -82,10 +83,11 @@ async def get_statistics_overview():
         
         # Most used target
         cursor.execute("""
-            SELECT target_id, COUNT(*) as count 
-            FROM jobs 
-            WHERE job_type = 'scan' AND target_id IS NOT NULL
-            GROUP BY target_id 
+            SELECT j.target_id, t.name, COUNT(*) as count 
+            FROM jobs j
+            LEFT JOIN targets t ON j.target_id = t.id
+            WHERE j.job_type = 'scan' AND j.target_id IS NOT NULL
+            GROUP BY j.target_id 
             ORDER BY count DESC 
             LIMIT 1
         """)
@@ -106,8 +108,8 @@ async def get_statistics_overview():
             "week_scans": week_scans,
             "month_scans": month_scans,
             "success_rate": round(success_rate, 1),
-            "most_used_scanner": most_used_scanner['device_id'] if most_used_scanner else None,
-            "most_used_target": most_used_target['target_id'] if most_used_target else None,
+            "most_used_scanner": most_used_scanner['name'] if most_used_scanner and most_used_scanner['name'] else (most_used_scanner['device_id'] if most_used_scanner else None),
+            "most_used_target": most_used_target['name'] if most_used_target and most_used_target['name'] else (most_used_target['target_id'] if most_used_target else None),
             "average_scans_per_day": round(avg_per_day, 1)
         }
 
@@ -163,21 +165,23 @@ async def get_scanner_statistics():
         
         cursor.execute("""
             SELECT 
-                device_id,
+                j.device_id,
+                COALESCE(d.name, j.device_id) as scanner_name,
                 COUNT(*) as total_scans,
-                SUM(CASE WHEN status = 'completed' AND message IS NULL THEN 1 ELSE 0 END) as successful,
-                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                MAX(created_at) as last_used
-            FROM jobs 
-            WHERE job_type = 'scan' AND device_id IS NOT NULL
-            GROUP BY device_id
+                SUM(CASE WHEN j.status = 'completed' AND j.message IS NULL THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN j.status = 'failed' THEN 1 ELSE 0 END) as failed,
+                MAX(j.created_at) as last_used
+            FROM jobs j
+            LEFT JOIN devices d ON j.device_id = d.id
+            WHERE j.job_type = 'scan' AND j.device_id IS NOT NULL
+            GROUP BY j.device_id
             ORDER BY total_scans DESC
         """)
         
         stats = []
         for row in cursor.fetchall():
             stats.append({
-                "scanner": row['device_id'],
+                "scanner": row['scanner_name'],
                 "total_scans": row['total_scans'],
                 "successful": row['successful'],
                 "failed": row['failed'],
@@ -198,21 +202,23 @@ async def get_target_statistics():
         
         cursor.execute("""
             SELECT 
-                target_id,
+                j.target_id,
+                COALESCE(t.name, j.target_id) as target_name,
                 COUNT(*) as total_deliveries,
-                SUM(CASE WHEN status = 'completed' AND message IS NULL THEN 1 ELSE 0 END) as successful,
-                SUM(CASE WHEN message IS NOT NULL THEN 1 ELSE 0 END) as failed,
-                MAX(created_at) as last_used
-            FROM jobs 
-            WHERE job_type = 'scan' AND target_id IS NOT NULL
-            GROUP BY target_id
+                SUM(CASE WHEN j.status = 'completed' AND j.message IS NULL THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN j.message IS NOT NULL THEN 1 ELSE 0 END) as failed,
+                MAX(j.created_at) as last_used
+            FROM jobs j
+            LEFT JOIN targets t ON j.target_id = t.id
+            WHERE j.job_type = 'scan' AND j.target_id IS NOT NULL
+            GROUP BY j.target_id
             ORDER BY total_deliveries DESC
         """)
         
         stats = []
         for row in cursor.fetchall():
             stats.append({
-                "target": row['target_id'],
+                "target": row['target_name'],
                 "total_deliveries": row['total_deliveries'],
                 "successful": row['successful'],
                 "failed": row['failed'],
