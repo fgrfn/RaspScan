@@ -47,6 +47,16 @@
       notAddedYet: 'Not Added Yet',
       addScanner: 'Add Scanner',
       noScannersFound: 'No scanners found. Make sure scanners are powered on and connected (USB or network).',
+      addManualScanner: 'Add Scanner Manually',
+      manualScannerTitle: 'Add Scanner via IP',
+      scannerIP: 'Scanner IP Address',
+      scannerIPPlaceholder: '192.168.1.100',
+      scannerPort: 'Port (eSCL)',
+      scannerPortPlaceholder: '8080',
+      scannerNameOptional: 'Scanner Name (optional)',
+      scannerNamePlaceholder: 'e.g. HP Office Scanner',
+      addManual: 'Add Scanner',
+      cancel: 'Cancel',
       quickProfiles: 'Quick profiles',
       scanSubtitle: 'Start server-side scans and route results to targets.',
       launchScan: 'Launch a scan',
@@ -203,6 +213,16 @@
       notAddedYet: 'Noch nicht hinzugefügt',
       addScanner: 'Scanner hinzufügen',
       noScannersFound: 'Keine Scanner gefunden. Stellen Sie sicher, dass Scanner eingeschaltet und verbunden sind (USB oder Netzwerk).',
+      addManualScanner: 'Scanner manuell hinzufügen',
+      manualScannerTitle: 'Scanner via IP hinzufügen',
+      scannerIP: 'Scanner IP-Adresse',
+      scannerIPPlaceholder: '192.168.1.100',
+      scannerPort: 'Port (eSCL)',
+      scannerPortPlaceholder: '8080',
+      scannerNameOptional: 'Scanner-Name (optional)',
+      scannerNamePlaceholder: 'z.B. HP Büro-Scanner',
+      addManual: 'Scanner hinzufügen',
+      cancel: 'Abbrechen',
       quickProfiles: 'Schnellprofile',
       scanSubtitle: 'Starten Sie serverseitige Scans und leiten Sie Ergebnisse an Ziele weiter.',
       launchScan: 'Scan starten',
@@ -393,6 +413,12 @@
   let discoveredScanners = [];
   let isDiscovering = false;
   let lastDiscoveryTime = null;
+  
+  // Manual scanner addition
+  let showManualScannerForm = false;
+  let manualScannerIP = '';
+  let manualScannerName = '';
+  let manualScannerPort = '8080';
   
   // Statistics
   let statsOverview = null;
@@ -1307,6 +1333,57 @@
       alert(`❌ Failed to add scanner: ${error.message || 'Network error'}`);
     }
   }
+  
+  async function addManualScanner() {
+    if (!manualScannerIP) {
+      alert(currentLang === 'de' ? 'Bitte IP-Adresse eingeben' : 'Please enter IP address');
+      return;
+    }
+    
+    // Validate IP format
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ipRegex.test(manualScannerIP)) {
+      alert(currentLang === 'de' ? 'Ungültige IP-Adresse' : 'Invalid IP address');
+      return;
+    }
+    
+    const port = manualScannerPort || '8080';
+    const url = `http://${manualScannerIP}:${port}/eSCL/`;
+    const name = manualScannerName || `Scanner ${manualScannerIP}`;
+    const uri = `airscan:escl:${name.replace(/\s+/g, '_')}:${url}`;
+    
+    try {
+      const response = await fetch(`${API_BASE}/devices/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uri: uri,
+          name: name,
+          device_type: 'scanner',
+          make: 'Manual',
+          model: name,
+          connection_type: 'eSCL (Network)',
+          description: `Manual eSCL scanner at ${manualScannerIP}:${port}`
+        })
+      });
+
+      if (response.ok) {
+        alert(`✅ Scanner "${name}" ${currentLang === 'de' ? 'erfolgreich hinzugefügt' : 'added successfully'}`);
+        // Reset form
+        manualScannerIP = '';
+        manualScannerName = '';
+        manualScannerPort = '8080';
+        showManualScannerForm = false;
+        await loadData();
+      } else {
+        const error = await response.json();
+        alert(`❌ ${currentLang === 'de' ? 'Fehler beim Hinzufügen' : 'Failed to add scanner'}: ${error.detail || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Add manual scanner error:', error);
+      alert(`❌ ${currentLang === 'de' ? 'Fehler beim Hinzufügen' : 'Failed to add scanner'}: ${error.message || 'Network error'}`);
+    }
+  }
 
 
 
@@ -1412,13 +1489,56 @@
         
         <h3 class="mt">{t.scannerManagement}</h3>
         <p class="muted">{t.scannerManagementDesc}</p>
-        <button class="primary" on:click={discoverScanners} disabled={isDiscovering}>
-          {isDiscovering ? t.searching : t.discoverScanners}
-        </button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="primary" on:click={discoverScanners} disabled={isDiscovering} style="flex: 1; min-width: 200px;">
+            {isDiscovering ? t.searching : t.discoverScanners}
+          </button>
+          <button class="ghost" on:click={() => showManualScannerForm = !showManualScannerForm} style="flex: 1; min-width: 200px;">
+            {showManualScannerForm ? t.cancel : t.addManualScanner}
+          </button>
+        </div>
         {#if lastDiscoveryTime}
           <p class="muted small" style="margin-top: 0.5rem;">
             {t.lastScan}: {lastDiscoveryTime.toLocaleTimeString()} · {t.clickRefresh}
           </p>
+        {/if}
+        
+        {#if showManualScannerForm}
+          <div class="panel" style="margin-top: 1rem;">
+            <div class="panel-header">{t.manualScannerTitle}</div>
+            <div class="panel-body">
+              <label for="manual-scanner-ip">{t.scannerIP}</label>
+              <input 
+                id="manual-scanner-ip" 
+                type="text" 
+                bind:value={manualScannerIP} 
+                placeholder={t.scannerIPPlaceholder}
+                style="width: 100%; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;"
+              />
+              
+              <label for="manual-scanner-port">{t.scannerPort}</label>
+              <input 
+                id="manual-scanner-port" 
+                type="text" 
+                bind:value={manualScannerPort} 
+                placeholder={t.scannerPortPlaceholder}
+                style="width: 100%; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;"
+              />
+              
+              <label for="manual-scanner-name">{t.scannerNameOptional}</label>
+              <input 
+                id="manual-scanner-name" 
+                type="text" 
+                bind:value={manualScannerName} 
+                placeholder={t.scannerNamePlaceholder}
+                style="width: 100%; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;"
+              />
+              
+              <button class="primary block" on:click={addManualScanner} style="margin-top: 0.5rem;">
+                {t.addManual}
+              </button>
+            </div>
+          </div>
         {/if}
         
         {#if discoveredScanners.length > 0}

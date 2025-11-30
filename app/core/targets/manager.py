@@ -232,15 +232,37 @@ class TargetManager:
         
         try:
             if target.type == 'SMB':
-                # Test SMB connectivity with smbclient
-                result = subprocess.run(
-                    ['smbclient', '-L', target.config['connection'], '-U', 
-                     f"{target.config.get('username', 'guest')}%{target.config.get('password', '')}",
-                     '-N'],
-                    capture_output=True,
-                    timeout=10
-                )
-                status = "ok" if result.returncode == 0 else "error"
+                # Test SMB connectivity by attempting to create a test file
+                import tempfile
+                
+                # Create a small test file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tmp:
+                    tmp.write('Scan2Target connection test')
+                    test_file = tmp.name
+                
+                try:
+                    # Try to upload the test file
+                    username = target.config.get('username', 'guest')
+                    password = target.config.get('password', '')
+                    share_path = target.config['connection']
+                    
+                    # Test file name
+                    test_filename = f".scan2target_test_{int(time.time())}.txt"
+                    
+                    result = subprocess.run(
+                        ['smbclient', share_path, '-U', f"{username}%{password}", 
+                         '-c', f'put "{test_file}" "{test_filename}"; del "{test_filename}"'],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                    
+                    status = "ok" if result.returncode == 0 else "error"
+                    message = None if status == "ok" else result.stderr.strip()
+                    
+                finally:
+                    # Clean up test file
+                    Path(test_file).unlink(missing_ok=True)
                 
             elif target.type == 'SFTP':
                 # Test SFTP with ssh
@@ -251,6 +273,7 @@ class TargetManager:
                     timeout=10
                 )
                 status = "ok" if result.returncode == 0 else "error"
+                message = None
                 
             elif target.type == 'Email':
                 # Test SMTP connection
@@ -259,17 +282,23 @@ class TargetManager:
                 server = smtplib.SMTP(smtp_host, smtp_port, timeout=5)
                 server.quit()
                 status = "ok"
+                message = None
                 
             elif target.type in ['Paperless-ngx', 'Webhook']:
                 # Test HTTP endpoint
                 url = target.config['connection']
                 response = requests.head(url, timeout=5)
                 status = "ok" if response.status_code < 500 else "error"
+                message = None
                 
             else:
                 status = "unknown"
+                message = "Target type not supported for testing"
                 
-            return {"target_id": target_id, "status": status}
+            result = {"target_id": target_id, "status": status}
+            if message:
+                result["message"] = message
+            return result
             
         except Exception as e:
             return {"target_id": target_id, "status": "error", "message": str(e)}

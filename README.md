@@ -44,7 +44,10 @@ If you prefer manual installation:
 After installation:
 1. Access Web UI at `http://YOUR_SERVER_IP`
 2. Login with default credentials (username: `admin`, password: `admin`)
-3. **⚠️ CHANGE THE DEFAULT PASSWORD IMMEDIATELY!**
+3. **⚠️ SECURITY: Complete these steps immediately:**
+   - Change the default admin password
+   - Set encryption key for production: `export SCAN2TARGET_SECRET_KEY=$(openssl rand -base64 32)`
+   - Add the key to `/etc/systemd/system/scan2target.service` and restart
 4. Click "Discover Scanners" to find your scanner
 5. Configure a target (SMB share, email, etc.)
 6. Start scanning!
@@ -118,6 +121,56 @@ Or set environment variables:
 ```bash
 export SCAN2TARGET_REQUIRE_AUTH=true
 ```
+
+## Security & Credential Encryption
+
+Scan2Target encrypts sensitive credentials (passwords, API tokens) before storing them in the database.
+
+### Encryption Key Setup
+
+**Development (automatic):**
+- Encryption key is auto-generated in `~/.scan2target/encryption.key`
+- Suitable for testing and development
+
+**Production (recommended):**
+1. Generate a secure encryption key:
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. Set as environment variable:
+   ```bash
+   export SCAN2TARGET_SECRET_KEY="your-generated-key"
+   ```
+
+3. Add to systemd service file (`/etc/systemd/system/scan2target.service`):
+   ```ini
+   [Service]
+   Environment="SCAN2TARGET_SECRET_KEY=your-generated-key"
+   ```
+
+4. Reload and restart service:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl restart scan2target
+   ```
+
+**What is encrypted:**
+- SMB/SFTP passwords
+- Email SMTP credentials
+- API tokens (Paperless-ngx, OAuth2)
+- All sensitive authentication fields
+
+**Encryption method:**
+- Algorithm: Fernet (AES-128-CBC with HMAC)
+- Key derivation: PBKDF2 with 100,000 iterations
+- Storage: Encrypted credentials in SQLite database
+
+### Migration from Unencrypted Data
+Existing targets are automatically migrated:
+1. Old unencrypted credentials are read normally
+2. On first update/save, they are encrypted
+3. No manual migration needed
 
 ## Database & Persistence
 

@@ -6,6 +6,7 @@ import json
 
 from app.core.database import get_db
 from app.core.targets.models import TargetConfig
+from app.core.security import get_secure_storage
 
 
 class TargetRepository:
@@ -16,6 +17,10 @@ class TargetRepository:
     
     def create(self, target: TargetConfig) -> TargetConfig:
         """Create a new target in the database."""
+        # Encrypt sensitive config fields before storing
+        secure = get_secure_storage()
+        encrypted_config = secure.encrypt_config(target.config)
+        
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -25,7 +30,7 @@ class TargetRepository:
                 target.id,
                 target.type,
                 target.name,
-                json.dumps(target.config),
+                json.dumps(encrypted_config),
                 1 if target.enabled else 0,
                 target.description,
                 1 if target.is_favorite else 0,
@@ -42,11 +47,16 @@ class TargetRepository:
             row = cursor.fetchone()
             
             if row:
+                # Decrypt sensitive config fields after loading
+                secure = get_secure_storage()
+                config = json.loads(row['config'])
+                decrypted_config = secure.decrypt_config(config)
+                
                 return TargetConfig(
                     id=row['id'],
                     type=row['type'],
                     name=row['name'],
-                    config=json.loads(row['config']),
+                    config=decrypted_config,
                     enabled=bool(row['enabled']),
                     description=row['description'],
                     is_favorite=bool(row['is_favorite']) if 'is_favorite' in row.keys() else False
@@ -55,6 +65,10 @@ class TargetRepository:
     
     def update(self, target: TargetConfig) -> TargetConfig:
         """Update an existing target."""
+        # Encrypt sensitive config fields before storing
+        secure = get_secure_storage()
+        encrypted_config = secure.encrypt_config(target.config)
+        
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -64,7 +78,7 @@ class TargetRepository:
             """, (
                 target.type,
                 target.name,
-                json.dumps(target.config),
+                json.dumps(encrypted_config),
                 1 if target.enabled else 0,
                 target.description,
                 1 if target.is_favorite else 0,
@@ -75,6 +89,8 @@ class TargetRepository:
     
     def list(self) -> List[TargetConfig]:
         """List all targets."""
+        secure = get_secure_storage()
+        
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM targets ORDER BY is_favorite DESC, name")
@@ -85,7 +101,7 @@ class TargetRepository:
                     id=row['id'],
                     type=row['type'],
                     name=row['name'],
-                    config=json.loads(row['config']),
+                    config=secure.decrypt_config(json.loads(row['config'])),
                     enabled=bool(row['enabled']),
                     description=row['description'],
                     is_favorite=bool(row['is_favorite']) if 'is_favorite' in row.keys() else False

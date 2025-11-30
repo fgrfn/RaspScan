@@ -22,6 +22,10 @@ Environment="SCAN2TARGET_REQUIRE_AUTH=false"
 # Environment="SCAN2TARGET_JWT_SECRET=change-this-in-production"
 # Environment="SCAN2TARGET_CORS_ORIGINS=*"
 
+# Security: Encryption key for credentials (REQUIRED for production)
+# Generate with: openssl rand -base64 32
+# Environment="SCAN2TARGET_SECRET_KEY=CHANGE-THIS-TO-YOUR-SECRET-KEY"
+
 # Start Scan2Target
 ExecStart=/opt/scan2target/.venv/bin/uvicorn app.main:app \
     --host 0.0.0.0 \
