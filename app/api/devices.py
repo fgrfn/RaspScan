@@ -2,12 +2,20 @@
 from typing import List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+import time
 
 from app.core.devices.repository import DeviceRepository, DeviceRecord
 from app.core.printing.manager import PrinterManager
 from app.core.scanning.manager import ScannerManager
 
 router = APIRouter()
+
+# Cache for scanner status (updated every 30 seconds)
+_scanner_cache = {
+    'devices': [],
+    'last_update': 0,
+    'cache_duration': 30  # seconds
+}
 
 
 class DiscoveredDevice(BaseModel):
@@ -120,6 +128,19 @@ async def discover_devices():
     return devices
 
 
+def _update_scanner_cache():
+    """Update cached scanner list if expired."""
+    current_time = time.time()
+    if current_time - _scanner_cache['last_update'] > _scanner_cache['cache_duration']:
+        try:
+            scanner_manager = ScannerManager()
+            _scanner_cache['devices'] = scanner_manager.list_devices()
+            _scanner_cache['last_update'] = current_time
+            print(f"[CACHE] Scanner status cache updated")
+        except Exception as e:
+            print(f"[CACHE] Failed to update scanner cache: {e}")
+
+
 @router.get("/", response_model=List[DeviceResponse])
 async def list_devices(device_type: str | None = None):
     """
@@ -131,20 +152,29 @@ async def list_devices(device_type: str | None = None):
     - device_type: Filter by 'printer' or 'scanner' (optional)
     
     These are your configured devices that persist across restarts.
+    Scanner status is cached for 30 seconds for performance.
     """
-    import time
     start = time.time()
     
     device_repo = DeviceRepository()
     devices = device_repo.list_devices(device_type=device_type, active_only=True)
     
+    # Update scanner cache if needed (non-blocking for first call)
+    _update_scanner_cache()
+    
     print(f"[TIMING] list_devices: DB query took {time.time() - start:.3f}s")
     
     response = []
     for device in devices:
-        # Skip expensive online status checks for fast loading
-        # Status can be checked separately if needed
         status = "unknown"
+        
+        # Check status from cache for scanners
+        if device.device_type == "scanner":
+            cached_scanners = _scanner_cache.get('devices', [])
+            if any(s['id'] == device.uri for s in cached_scanners):
+                status = "online"
+            else:
+                status = "offline"
         
         response.append(DeviceResponse(
             id=device.id,
