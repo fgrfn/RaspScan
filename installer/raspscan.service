@@ -1,17 +1,51 @@
 [Unit]
-Description=RaspScan FastAPI server
-After=network.target cups.service
-Wants=cups.service
+Description=RaspScan - Scan & Print Server
+Documentation=https://github.com/fgrfn/RaspScan
+After=network.target cups.service avahi-daemon.service
+Wants=cups.service avahi-daemon.service
 
 [Service]
 Type=simple
 User=pi
+Group=pi
 WorkingDirectory=/opt/raspscan
+
+# Python Environment
 Environment="VIRTUAL_ENV=/opt/raspscan/.venv"
 Environment="PATH=/opt/raspscan/.venv/bin:/usr/bin:/bin"
-ExecStart=/opt/raspscan/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Environment="PYTHONUNBUFFERED=1"
+
+# RaspScan Configuration
+Environment="RASPSCAN_DATABASE_PATH=/opt/raspscan/raspscan.db"
+Environment="RASPSCAN_DATA_DIR=/opt/raspscan/data"
+Environment="RASPSCAN_REQUIRE_AUTH=false"
+# Environment="RASPSCAN_JWT_SECRET=change-this-in-production"
+# Environment="RASPSCAN_CORS_ORIGINS=*"
+
+# Start RaspScan
+ExecStart=/opt/raspscan/.venv/bin/uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --log-level info \
+    --access-log
+
+# Restart on failure
 Restart=on-failure
 RestartSec=5
+StartLimitBurst=3
+StartLimitInterval=300
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/raspscan /tmp/raspscan
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=raspscan
 
 [Install]
 WantedBy=multi-user.target

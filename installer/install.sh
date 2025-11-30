@@ -28,7 +28,18 @@ install_packages() {
         sane-utils \
         sane-airscan \
         smbclient \
-        cifs-utils
+        cifs-utils \
+        sqlite3 \
+        ssh \
+        imagemagick \
+        nodejs \
+        npm
+    
+    # Enable and start services
+    systemctl enable cups
+    systemctl enable avahi-daemon
+    systemctl start cups
+    systemctl start avahi-daemon
 }
 
 setup_venv() {
@@ -41,6 +52,22 @@ setup_venv() {
         pip install -r "${APP_DIR}/requirements.txt"
     else
         echo "[!] requirements.txt not found; skipping Python dependency installation" >&2
+    fi
+}
+
+setup_webui() {
+    echo "[+] Setting up Web UI..."
+    local WEB_DIR="${APP_DIR}/app/web"
+    if [[ -d "${WEB_DIR}" && -f "${WEB_DIR}/package.json" ]]; then
+        cd "${WEB_DIR}"
+        echo "[+] Installing npm dependencies..."
+        sudo -u "${RUN_USER}" npm install
+        echo "[+] Building Web UI for production..."
+        sudo -u "${RUN_USER}" npm run build
+        cd "${APP_DIR}"
+        echo "[✓] Web UI built successfully"
+    else
+        echo "[!] Web UI directory not found; skipping Web UI setup" >&2
     fi
 }
 
@@ -72,16 +99,54 @@ enable_service() {
     echo "[+] Enabling and starting ${SERVICE_NAME} service..."
     systemctl daemon-reload
     systemctl enable --now "${SERVICE_NAME}"
+    sleep 2
     systemctl status "${SERVICE_NAME}" --no-pager --full || true
+}
+
+print_info() {
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════════╗"
+    echo "║                  RaspScan Installation Complete                  ║"
+    echo "╚═══════════════════════════════════════════════════════════════════╝"
+    echo ""
+    echo "✓ RaspScan is running on: http://$(hostname -I | awk '{print $1}'):8000"
+    echo "✓ API Documentation: http://$(hostname -I | awk '{print $1}'):8000/docs"
+    echo "✓ Health Check: http://$(hostname -I | awk '{print $1}'):8000/health"
+    echo ""
+    echo "Default Admin Credentials:"
+    echo "  Username: admin"
+    echo "  Password: admin"
+    echo ""
+    echo "⚠️  SECURITY WARNING:"
+    echo "  1. Change the default admin password immediately!"
+    echo "  2. Consider enabling authentication: export RASPSCAN_REQUIRE_AUTH=true"
+    echo "  3. Set up HTTPS via reverse proxy (Caddy/nginx)"
+    echo ""
+    echo "Database Location: ${APP_DIR}/raspscan.db"
+    echo ""
+    echo "Service Management:"
+    echo "  Start:   sudo systemctl start ${SERVICE_NAME}"
+    echo "  Stop:    sudo systemctl stop ${SERVICE_NAME}"
+    echo "  Restart: sudo systemctl restart ${SERVICE_NAME}"
+    echo "  Status:  sudo systemctl status ${SERVICE_NAME}"
+    echo "  Logs:    sudo journalctl -u ${SERVICE_NAME} -f"
+    echo ""
+    echo "Web UI:"
+    echo "  Production build already served at: http://$(hostname -I | awk '{print $1}'):8000/"
+    echo "  For development with hot-reload:"
+    echo "    cd ${APP_DIR}/app/web"
+    echo "    npm run dev"
+    echo ""
 }
 
 main() {
     require_root
     install_packages
     setup_venv
+    setup_webui
     create_service
     enable_service
-    echo "[+] Installation complete. RaspScan should now be running on port 8000."
+    print_info
 }
 
 main "$@"
