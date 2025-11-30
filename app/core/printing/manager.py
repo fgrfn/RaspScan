@@ -87,6 +87,12 @@ class PrinterManager:
                 if not uri:
                     continue
                 
+                # Skip protocol handlers that aren't real devices
+                # These are CUPS backends/protocols, not actual printers
+                protocol_only = ['socket', 'http', 'https', 'beh', 'ipp', 'ipps', 'lpd', 'smb', 'file']
+                if uri in protocol_only or (uri.split(':')[0] if ':' in uri else uri) in protocol_only:
+                    continue
+                
                 # Extract make and model from URI
                 make = 'Unknown'
                 model = 'Printer'
