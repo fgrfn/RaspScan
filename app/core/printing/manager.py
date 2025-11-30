@@ -13,10 +13,10 @@ class PrinterManager:
     """Wrapper around CUPS operations."""
 
     def list_printers(self) -> List[dict]:
-        # TODO: query CUPS for printers
-        return [
-            {"id": "ipp://printer.local/ipp/print", "name": "Office Printer", "status": "idle", "is_default": True}
-        ]
+        # TODO: query CUPS for printers via subprocess or pycups
+        # Example: subprocess.run(['lpstat', '-p', '-d'])
+        # For now return empty list until CUPS integration is complete
+        return []
 
     def list_jobs(self, printer_id: str) -> List[JobRecord]:
         return JobManager().list_jobs(job_type="print", printer_id=printer_id)
@@ -42,3 +42,9 @@ class PrinterManager:
             status=JobStatus.queued,
         )
         return job_id
+
+    def add_printer(self, uri: str, name: str, description: str | None = None) -> None:
+        """Add a printer to CUPS via lpinfo/lpadmin."""
+        # TODO: integrate with CUPS via subprocess or pycups
+        # Example: subprocess.run(['lpadmin', '-p', name, '-v', uri, '-E'])
+        pass

@@ -12,19 +12,14 @@ class ScannerManager:
 
     def list_devices(self) -> List[dict]:
         # TODO: integrate SANE/eSCL discovery (Avahi + sane-airscan)
-        return [
-            {
-                "id": "escl:HP_Envy_6400",
-                "name": "HP Envy 6400",
-                "capabilities": {"dpi": [150, 300, 600], "color_modes": ["color", "gray"], "sizes": ["A4", "Letter"]},
-            }
-        ]
+        # Example: subprocess.run(['scanimage', '-L'])
+        # For now return empty list until SANE integration is complete
+        return []
 
     def list_profiles(self) -> List[dict]:
-        # TODO: pull from config storage
-        return [
-            {"id": "scan_a4_color_300", "dpi": 300, "color_mode": "color", "paper_size": "A4", "format": "pdf"}
-        ]
+        # TODO: pull from config storage (SQLite or config file)
+        # For now return empty list until profile management is implemented
+        return []
 
     def start_scan(self, device_id: str, profile_id: str, target_id: str, filename_prefix: str | None) -> str:
         job_id = str(uuid.uuid4())

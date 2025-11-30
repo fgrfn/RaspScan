@@ -4,6 +4,12 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+class SMBConfig(BaseModel):
+    connection: str
+    username: str
+    password: str
+
+
 class TargetConfig(BaseModel):
     id: str
     type: str

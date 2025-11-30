@@ -18,6 +18,12 @@ class PrintJobResponse(BaseModel):
     job_id: str
 
 
+class AddPrinterRequest(BaseModel):
+    uri: str
+    name: str
+    description: str | None = None
+
+
 @router.get("/", response_model=List[dict])
 async def list_printers():
     """List available printers."""
@@ -46,3 +52,14 @@ async def submit_print_job(
 async def print_test_page(printer_id: str):
     job_id = PrinterManager().print_test_page(printer_id)
     return PrintJobResponse(job_id=job_id)
+
+
+@router.post("/add")
+async def add_printer(printer: AddPrinterRequest):
+    """Add a USB or network printer to CUPS."""
+    PrinterManager().add_printer(
+        uri=printer.uri,
+        name=printer.name,
+        description=printer.description
+    )
+    return {"status": "added", "name": printer.name}

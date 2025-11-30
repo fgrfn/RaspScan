@@ -1,50 +1,225 @@
 <script>
+  import { onMount } from 'svelte';
   import NavBar from './components/NavBar.svelte';
   import SectionCard from './components/SectionCard.svelte';
   import StatGrid from './components/StatGrid.svelte';
 
-  const printers = [
-    { name: 'HP Envy 6400', status: 'Ready', jobs: 1, protocol: 'IPP', color: true },
-    { name: 'Brother HL-L2350DW', status: 'Idle', jobs: 0, protocol: 'AirPrint', color: false }
-  ];
+  const API_BASE = '/api/v1';
 
-  const scanners = [
-    { name: 'HP Envy 6400 (eSCL)', dpi: [150, 300, 600], color: true },
-    { name: 'Fujitsu ScanSnap (SANE)', dpi: [150, 300], color: true }
-  ];
-
-  const targets = [
-    { name: 'NAS (SMB)', details: '\\nas\scans', status: 'Reachable' },
-    { name: 'Paperless-ngx', details: 'http://paperless.local/api', status: 'Reachable' },
-    { name: 'Webhook → Home Assistant', details: 'POST /api/webhook/raspscan', status: 'Configured' }
-  ];
-
-  const history = [
-    { id: 'SCAN-204', type: 'Scan', device: 'HP Envy 6400', target: 'NAS (SMB)', ts: '2024-04-01 09:12', status: 'Done' },
-    { id: 'PRINT-882', type: 'Print', device: 'Brother HL-L2350DW', target: 'Queue', ts: '2024-04-01 09:05', status: 'In queue' },
-    { id: 'SCAN-203', type: 'Scan', device: 'Fujitsu ScanSnap', target: 'Paperless-ngx', ts: '2024-04-01 08:53', status: 'Done' }
-  ];
-
-  const statCards = [
-    { label: 'Ready printers', value: '02', icon: '🖨️', sub: 'AirPrint + USB' },
-    { label: 'Scanners found', value: '02', icon: '📑', sub: 'eSCL + SANE' },
-    { label: 'Today scans', value: '7', icon: '✅', sub: '2 targets succeeded' },
-    { label: 'Active jobs', value: '01', icon: '⏳', sub: 'Print queue watching' }
-  ];
+  let printers = [];
+  let scanners = [];
+  let targets = [];
+  let history = [];
+  let statCards = [];
+  
+  let selectedScanner = '';
+  let selectedProfile = '';
+  let selectedTarget = '';
+  let selectedPrinter = '';
+  let printCopies = 1;
+  let printFile = null;
+  
+  let targetType = 'SMB';
+  let targetName = '';
+  let targetConnection = '';
+  let targetUsername = '';
+  let targetPassword = '';
+  
+  let showPrinterSettings = false;
+  let newPrinterUri = '';
+  let newPrinterName = '';
 
   const navLinks = [
     { label: 'Dashboard', href: '#dashboard' },
     { label: 'Scan', href: '#scan' },
     { label: 'Print', href: '#print' },
     { label: 'Targets', href: '#targets' },
-    { label: 'History', href: '#history' }
+    { label: 'History', href: '#history' },
+    { label: 'Settings', href: '#settings' }
   ];
 
   const quickProfiles = [
-    { name: 'Color @300 DPI', description: 'PDF to NAS consume folder' },
-    { name: 'Grayscale @150 DPI', description: 'Lightweight for email' },
-    { name: 'Photo @600 DPI', description: 'Archival JPEG to Paperless-ngx' }
+    { name: 'Color @300 DPI', description: 'PDF to target' },
+    { name: 'Grayscale @150 DPI', description: 'Lightweight PDF' },
+    { name: 'Photo @600 DPI', description: 'High quality JPEG' }
   ];
+
+  onMount(async () => {
+    await loadData();
+  });
+
+  async function loadData() {
+    try {
+      const [printersRes, scannersRes, targetsRes, historyRes] = await Promise.all([
+        fetch(`${API_BASE}/printers`),
+        fetch(`${API_BASE}/scan/devices`),
+        fetch(`${API_BASE}/targets`),
+        fetch(`${API_BASE}/history`)
+      ]);
+
+      printers = await printersRes.json();
+      scanners = await scannersRes.json();
+      targets = await targetsRes.json();
+      history = await historyRes.json();
+
+      updateStats();
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    }
+  }
+
+  function updateStats() {
+    const readyPrinters = printers.filter(p => p.status === 'idle' || p.status === 'Ready').length;
+    const todayScans = history.filter(h => h.type === 'Scan' && isToday(h.ts)).length;
+    const activeJobs = history.filter(h => h.status === 'In queue' || h.status === 'processing').length;
+
+    statCards = [
+      { label: 'Ready printers', value: String(readyPrinters).padStart(2, '0'), icon: '🖨️', sub: 'Available' },
+      { label: 'Scanners found', value: String(scanners.length).padStart(2, '0'), icon: '📑', sub: 'eSCL + SANE' },
+      { label: 'Today scans', value: String(todayScans), icon: '✅', sub: 'Completed today' },
+      { label: 'Active jobs', value: String(activeJobs).padStart(2, '0'), icon: '⏳', sub: 'In progress' }
+    ];
+  }
+
+  function isToday(timestamp) {
+    const date = new Date(timestamp);
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  }
+
+  async function startScan() {
+    if (!selectedScanner || !selectedTarget) {
+      alert('Please select scanner and target');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/scan/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device_id: selectedScanner,
+          profile: selectedProfile || quickProfiles[0].name,
+          target_id: selectedTarget
+        })
+      });
+
+      if (response.ok) {
+        await loadData();
+        alert('Scan started successfully');
+      } else {
+        alert('Failed to start scan');
+      }
+    } catch (error) {
+      console.error('Scan error:', error);
+      alert('Failed to start scan');
+    }
+  }
+
+  async function submitPrintJob() {
+    if (!selectedPrinter || !printFile) {
+      alert('Please select printer and file');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', printFile);
+    formData.append('printer_id', selectedPrinter);
+    formData.append('options', JSON.stringify({ copies: printCopies }));
+
+    try {
+      const response = await fetch(`${API_BASE}/printers/print`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        await loadData();
+        printFile = null;
+        alert('Print job submitted');
+      } else {
+        alert('Failed to submit print job');
+      }
+    } catch (error) {
+      console.error('Print error:', error);
+      alert('Failed to submit print job');
+    }
+  }
+
+  async function saveTarget() {
+    if (!targetName || !targetConnection) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const config = {
+      connection: targetConnection
+    };
+
+    if (targetType === 'SMB') {
+      config.username = targetUsername;
+      config.password = targetPassword;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/targets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: `target_${Date.now()}`,
+          type: targetType,
+          name: targetName,
+          config: config,
+          enabled: true
+        })
+      });
+
+      if (response.ok) {
+        await loadData();
+        targetName = '';
+        targetConnection = '';
+        targetUsername = '';
+        targetPassword = '';
+        alert('Target saved');
+      } else {
+        alert('Failed to save target');
+      }
+    } catch (error) {
+      console.error('Save target error:', error);
+      alert('Failed to save target');
+    }
+  }
+
+  async function addPrinter() {
+    if (!newPrinterUri || !newPrinterName) {
+      alert('Please enter printer URI and name');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/printers/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uri: newPrinterUri,
+          name: newPrinterName
+        })
+      });
+
+      if (response.ok) {
+        await loadData();
+        newPrinterUri = '';
+        newPrinterName = '';
+        showPrinterSettings = false;
+        alert('Printer added successfully');
+      } else {
+        alert('Failed to add printer');
+      }
+    } catch (error) {
+      console.error('Add printer error:', error);
+      alert('Failed to add printer');
+    }
+  }
 </script>
 
 <NavBar brand="RaspScan" {navLinks} links={navLinks} />
@@ -66,18 +241,22 @@
     </div>
   </section>
 
-  <SectionCard id="scan" title="Scan" subtitle="Kick off server-side scans and route results to your favorite targets." actions={[{ label: 'Add profile', onClick: () => alert('Profile dialog stub') }]}>
+  <SectionCard id="scan" title="Scan" subtitle="Start server-side scans and route results to targets.">
     <div class="grid two-cols">
       <div>
         <h3>Scanners</h3>
-        <ul class="list">
-          {#each scanners as scanner}
-            <li>
-              <div class="list-title">{scanner.name}</div>
-              <div class="muted">DPI: {scanner.dpi.join(', ')} · Color: {scanner.color ? 'Yes' : 'No'}</div>
-            </li>
-          {/each}
-        </ul>
+        {#if scanners.length === 0}
+          <p class="muted">No scanners detected. Make sure SANE/eSCL is configured.</p>
+        {:else}
+          <ul class="list">
+            {#each scanners as scanner}
+              <li>
+                <div class="list-title">{scanner.name}</div>
+                <div class="muted">{scanner.type || 'Unknown type'}</div>
+              </li>
+            {/each}
+          </ul>
+        {/if}
         <h3 class="mt">Quick profiles</h3>
         <div class="chip-row">
           {#each quickProfiles as profile}
@@ -88,121 +267,166 @@
       <div class="panel">
         <div class="panel-header">Launch a scan</div>
         <div class="panel-body">
-          <label>Choose scanner</label>
-          <select>
+          <label for="scanner-select">Choose scanner</label>
+          <select id="scanner-select" bind:value={selectedScanner}>
+            <option value="">-- Select scanner --</option>
             {#each scanners as scanner}
-              <option>{scanner.name}</option>
+              <option value={scanner.id}>{scanner.name}</option>
             {/each}
           </select>
-          <label>Profile</label>
-          <select>
+          <label for="profile-select">Profile</label>
+          <select id="profile-select" bind:value={selectedProfile}>
             {#each quickProfiles as profile}
-              <option>{profile.name}</option>
+              <option value={profile.name}>{profile.name}</option>
             {/each}
           </select>
-          <label>Target</label>
-          <select>
+          <label for="target-select">Target</label>
+          <select id="target-select" bind:value={selectedTarget}>
+            <option value="">-- Select target --</option>
             {#each targets as target}
-              <option>{target.name}</option>
+              <option value={target.id}>{target.name}</option>
             {/each}
           </select>
-          <button class="primary block">Start scan</button>
-          <p class="muted small">Actions are stubbed for the UI preview; wire them to /api/scan/start in the backend.</p>
+          <button class="primary block" on:click={startScan}>Start scan</button>
         </div>
       </div>
     </div>
   </SectionCard>
 
-  <SectionCard id="print" title="Print" subtitle="Upload PDFs or images and forward them to any CUPS printer.">
+  <SectionCard id="print" title="Print" subtitle="Upload PDFs or images and forward them to CUPS printers.">
     <div class="grid two-cols">
       <div>
         <h3>Printers</h3>
-        <ul class="list">
-          {#each printers as printer}
-            <li>
-              <div class="list-title">{printer.name}</div>
-              <div class="muted">{printer.protocol} · {printer.color ? 'Color' : 'Mono'} · Jobs: {printer.jobs}</div>
-              <span class={`badge ${printer.status === 'Ready' ? 'success' : 'warning'}`}>{printer.status}</span>
-            </li>
-          {/each}
-        </ul>
+        {#if printers.length === 0}
+          <p class="muted">No printers configured. Add printers in Settings.</p>
+        {:else}
+          <ul class="list">
+            {#each printers as printer}
+              <li>
+                <div class="list-title">{printer.name}</div>
+                <div class="muted">{printer.id}</div>
+                <span class={`badge ${printer.status === 'idle' ? 'success' : 'warning'}`}>{printer.status}</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
       <div class="panel">
         <div class="panel-header">Send a print job</div>
         <div class="panel-body">
-          <label>Choose printer</label>
-          <select>
+          <label for="printer-select">Choose printer</label>
+          <select id="printer-select" bind:value={selectedPrinter}>
+            <option value="">-- Select printer --</option>
             {#each printers as printer}
-              <option>{printer.name}</option>
+              <option value={printer.id}>{printer.name}</option>
             {/each}
           </select>
-          <label>File</label>
-          <input type="file" accept="application/pdf,image/*" />
-          <label>Copies</label>
-          <input type="number" min="1" value="1" />
-          <button class="primary block">Upload &amp; print</button>
-          <p class="muted small">Wire to /api/print to forward documents to CUPS.</p>
+          <label for="file-input">File</label>
+          <input id="file-input" type="file" accept="application/pdf,image/*" on:change={(e) => printFile = e.target.files[0]} />
+          <label for="copies-input">Copies</label>
+          <input id="copies-input" type="number" min="1" bind:value={printCopies} />
+          <button class="primary block" on:click={submitPrintJob}>Upload &amp; print</button>
         </div>
       </div>
     </div>
   </SectionCard>
 
-  <SectionCard id="targets" title="Targets" subtitle="Curated destinations for scanned documents.">
+  <SectionCard id="targets" title="Targets" subtitle="Destinations for scanned documents.">
     <div class="grid two-cols">
       <div>
         <h3>Configured targets</h3>
-        <ul class="list">
-          {#each targets as target}
-            <li>
-              <div class="list-title">{target.name}</div>
-              <div class="muted">{target.details}</div>
-              <span class="badge success">{target.status}</span>
-            </li>
-          {/each}
-        </ul>
+        {#if targets.length === 0}
+          <p class="muted">No targets configured yet.</p>
+        {:else}
+          <ul class="list">
+            {#each targets as target}
+              <li>
+                <div class="list-title">{target.name}</div>
+                <div class="muted">{target.type}: {target.config?.connection || 'N/A'}</div>
+                <span class="badge {target.enabled ? 'success' : 'warning'}">{target.enabled ? 'Enabled' : 'Disabled'}</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
       <div class="panel">
         <div class="panel-header">Add target</div>
         <div class="panel-body">
-          <label>Type</label>
-          <select>
+          <label for="target-type">Type</label>
+          <select id="target-type" bind:value={targetType}>
             <option>SMB</option>
             <option>SFTP</option>
-            <option>Email (SMTP)</option>
+            <option>Email</option>
             <option>Paperless-ngx</option>
             <option>Webhook</option>
           </select>
-          <label>Name</label>
-          <input type="text" placeholder="e.g. NAS scans" />
-          <label>Connection</label>
-          <input type="text" placeholder="//nas/share or URL" />
-          <button class="ghost block">Save target</button>
-          <p class="muted small">Persist to /api/targets and validate connectivity.</p>
+          <label for="target-name">Name</label>
+          <input id="target-name" type="text" placeholder="e.g. NAS scans" bind:value={targetName} />
+          <label for="target-connection">Connection</label>
+          <input id="target-connection" type="text" placeholder="//nas/share or URL" bind:value={targetConnection} />
+          
+          {#if targetType === 'SMB'}
+            <label for="target-username">Username</label>
+            <input id="target-username" type="text" placeholder="Network username" bind:value={targetUsername} />
+            <label for="target-password">Password</label>
+            <input id="target-password" type="password" placeholder="Network password" bind:value={targetPassword} />
+          {/if}
+          
+          <button class="primary block" on:click={saveTarget}>Save target</button>
         </div>
       </div>
     </div>
   </SectionCard>
 
-  <SectionCard id="history" title="History" subtitle="Recent scan and print jobs with status and routing.">
-    <div class="table">
-      <div class="table-head">
-        <span>ID</span>
-        <span>Type</span>
-        <span>Device</span>
-        <span>Target</span>
-        <span>Time</span>
-        <span>Status</span>
-      </div>
-      {#each history as job}
-        <div class="table-row">
-          <span>{job.id}</span>
-          <span>{job.type}</span>
-          <span>{job.device}</span>
-          <span>{job.target}</span>
-          <span>{job.ts}</span>
-          <span class={`badge ${job.status === 'Done' ? 'success' : 'warning'}`}>{job.status}</span>
+  <SectionCard id="history" title="History" subtitle="Recent scan and print jobs.">
+    {#if history.length === 0}
+      <p class="muted">No jobs in history yet.</p>
+    {:else}
+      <div class="table">
+        <div class="table-head">
+          <span>ID</span>
+          <span>Type</span>
+          <span>Device</span>
+          <span>Target</span>
+          <span>Time</span>
+          <span>Status</span>
         </div>
-      {/each}
+        {#each history as job}
+          <div class="table-row">
+            <span>{job.id}</span>
+            <span>{job.type}</span>
+            <span>{job.device}</span>
+            <span>{job.target}</span>
+            <span>{job.ts}</span>
+            <span class={`badge ${job.status === 'Done' || job.status === 'completed' ? 'success' : 'warning'}`}>{job.status}</span>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </SectionCard>
+
+  <SectionCard id="settings" title="Settings" subtitle="Configure printers and system settings.">
+    <div class="grid two-cols">
+      <div>
+        <h3>USB Printers</h3>
+        <p class="muted">Add printers connected via USB to CUPS.</p>
+        <button class="ghost" on:click={() => showPrinterSettings = !showPrinterSettings}>
+          {showPrinterSettings ? 'Hide' : 'Show'} Printer Settings
+        </button>
+      </div>
+      {#if showPrinterSettings}
+        <div class="panel">
+          <div class="panel-header">Add USB Printer</div>
+          <div class="panel-body">
+            <label for="printer-uri">Printer URI</label>
+            <input id="printer-uri" type="text" placeholder="usb://HP/Envy" bind:value={newPrinterUri} />
+            <label for="printer-name">Printer Name</label>
+            <input id="printer-name" type="text" placeholder="My USB Printer" bind:value={newPrinterName} />
+            <button class="primary block" on:click={addPrinter}>Add Printer</button>
+            <p class="muted small">For USB printers, use URI format: usb://Manufacturer/Model</p>
+          </div>
+        </div>
+      {/if}
     </div>
   </SectionCard>
 </main>
