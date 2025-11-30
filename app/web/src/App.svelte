@@ -129,7 +129,42 @@
       uploadFailed: '⚠️ Upload failed',
       retryUpload: '🔄 Retry Upload',
       pleaseSelectScanner: '⚠️ Please select a scanner below',
-      pleaseSelectTarget: '⚠️ Please select a target below'
+      pleaseSelectTarget: '⚠️ Please select a target below',
+      stats: 'Statistics',
+      statsSubtitle: 'Scan statistics and analytics.',
+      overview: 'Overview',
+      totalScans: 'Total Scans',
+      successRate: 'Success Rate',
+      avgScansPerDay: 'Avg Scans/Day',
+      mostUsedScanner: 'Most Used Scanner',
+      mostUsedTarget: 'Most Used Target',
+      timeline: 'Scan Timeline (Last 30 Days)',
+      hourlyDistribution: 'Scans by Hour of Day',
+      scannerStats: 'Scanner Statistics',
+      targetStats: 'Target Statistics',
+      scans: 'Scans',
+      successful: 'Successful',
+      lastUsed: 'Last Used',
+      previewScan: 'Preview Scan',
+      previewing: '⏳ Previewing...',
+      previewDesc: 'Quick low-resolution preview before final scan',
+      closePreview: 'Close Preview',
+      proceedToScan: 'Proceed to Full Scan',
+      cloudTarget: 'Cloud Storage',
+      googleDrive: 'Google Drive',
+      dropbox: 'Dropbox',
+      oneDrive: 'OneDrive',
+      nextcloud: 'Nextcloud',
+      accessToken: 'Access Token',
+      accessTokenPlaceholder: 'Your OAuth2 access token',
+      folderId: 'Folder ID (optional)',
+      folderIdPlaceholder: 'Target folder ID',
+      folderPath: 'Folder Path',
+      folderPathPlaceholder: '/Documents/Scans',
+      webdavUrl: 'WebDAV URL',
+      webdavUrlPlaceholder: 'https://cloud.example.com/remote.php/dav/files/username/',
+      webdavPath: 'Upload Path',
+      webdavPathPlaceholder: '/Scans'
     },
     de: {
       brand: 'RaspScan',
@@ -250,7 +285,42 @@
       uploadFailed: '⚠️ Upload fehlgeschlagen',
       retryUpload: '🔄 Upload wiederholen',
       pleaseSelectScanner: '⚠️ Bitte wählen Sie unten einen Scanner aus',
-      pleaseSelectTarget: '⚠️ Bitte wählen Sie unten ein Ziel aus'
+      pleaseSelectTarget: '⚠️ Bitte wählen Sie unten ein Ziel aus',
+      stats: 'Statistiken',
+      statsSubtitle: 'Scan-Statistiken und Analysen.',
+      overview: 'Übersicht',
+      totalScans: 'Gesamte Scans',
+      successRate: 'Erfolgsrate',
+      avgScansPerDay: 'Ø Scans/Tag',
+      mostUsedScanner: 'Meist genutzter Scanner',
+      mostUsedTarget: 'Meist genutztes Ziel',
+      timeline: 'Scan-Verlauf (Letzte 30 Tage)',
+      hourlyDistribution: 'Scans nach Tageszeit',
+      scannerStats: 'Scanner-Statistiken',
+      targetStats: 'Ziel-Statistiken',
+      scans: 'Scans',
+      successful: 'Erfolgreich',
+      lastUsed: 'Zuletzt verwendet',
+      previewScan: 'Scan-Vorschau',
+      previewing: '⏳ Vorschau lädt...',
+      previewDesc: 'Schnelle Vorschau in niedriger Auflösung vor dem finalen Scan',
+      closePreview: 'Vorschau schließen',
+      proceedToScan: 'Zum vollständigen Scan',
+      cloudTarget: 'Cloud-Speicher',
+      googleDrive: 'Google Drive',
+      dropbox: 'Dropbox',
+      oneDrive: 'OneDrive',
+      nextcloud: 'Nextcloud',
+      accessToken: 'Zugangs-Token',
+      accessTokenPlaceholder: 'Ihr OAuth2 Zugangs-Token',
+      folderId: 'Ordner-ID (optional)',
+      folderIdPlaceholder: 'Zielordner-ID',
+      folderPath: 'Ordnerpfad',
+      folderPathPlaceholder: '/Dokumente/Scans',
+      webdavUrl: 'WebDAV-URL',
+      webdavUrlPlaceholder: 'https://cloud.beispiel.de/remote.php/dav/files/benutzername/',
+      webdavPath: 'Upload-Pfad',
+      webdavPathPlaceholder: '/Scans'
     }
   };
   
@@ -311,11 +381,31 @@
   // Paperless-ngx fields
   let targetApiToken = '';
   
+  // Cloud storage fields
+  let targetAccessToken = '';
+  let targetFolderId = '';
+  let targetFolderPath = '';
+  let targetWebdavUrl = '';
+  let targetWebdavPath = '';
+  
 
   let discoveredDevices = [];
   let discoveredScanners = [];
   let isDiscovering = false;
   let lastDiscoveryTime = null;
+  
+  // Statistics
+  let statsOverview = null;
+  let statsTimeline = [];
+  let statsScanners = [];
+  let statsTargets = [];
+  let statsHourly = [];
+  let isLoadingStats = true;
+  
+  // Preview
+  let showPreview = false;
+  let previewImage = null;
+  let isPreviewing = false;
   
   let isLoadingDevices = true;
   let isLoadingTargets = true;
@@ -330,6 +420,7 @@
     { label: t.scan, href: '#scan' },
     { label: t.activeScansMenu, href: '#active-scans' },
     { label: t.targets, href: '#targets' },
+    { label: t.stats, href: '#stats' },
     { label: t.history, href: '#history' }
   ];
 
@@ -470,6 +561,33 @@
     loadTargets();
     loadHistory();
     loadProfiles();
+    loadStats();
+  }
+  
+  async function loadStats() {
+    isLoadingStats = true;
+    try {
+      // Load all stats in parallel
+      const [overviewRes, timelineRes, scannersRes, targetsRes, hourlyRes] = await Promise.all([
+        fetch(`${API_BASE}/stats/overview`),
+        fetch(`${API_BASE}/stats/timeline?days=30`),
+        fetch(`${API_BASE}/stats/scanners`),
+        fetch(`${API_BASE}/stats/targets`),
+        fetch(`${API_BASE}/stats/hourly`)
+      ]);
+      
+      if (overviewRes.ok) statsOverview = await overviewRes.json();
+      if (timelineRes.ok) statsTimeline = await timelineRes.json();
+      if (scannersRes.ok) statsScanners = await scannersRes.json();
+      if (targetsRes.ok) statsTargets = await targetsRes.json();
+      if (hourlyRes.ok) statsHourly = await hourlyRes.json();
+      
+      console.log('Stats loaded:', { statsOverview, statsTimeline: statsTimeline.length });
+    } catch (error) {
+      console.error('Failed to load stats:', error);
+    } finally {
+      isLoadingStats = false;
+    }
   }
   
   // Profile name translations
@@ -682,6 +800,45 @@
     return date.toDateString() === today.toDateString();
   }
 
+  async function previewScan() {
+    if (!selectedScanner) {
+      alert(t.pleaseSelectScanner);
+      return;
+    }
+    
+    isPreviewing = true;
+    previewImage = null;
+    showPreview = true;
+    
+    try {
+      const response = await fetch(`${API_BASE}/scan/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: selectedScanner })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        previewImage = result.image; // base64 data URI
+      } else {
+        const error = await response.json();
+        alert(`❌ Preview failed: ${error.detail || 'Unknown error'}`);
+        showPreview = false;
+      }
+    } catch (error) {
+      console.error('Preview error:', error);
+      alert(`❌ Preview failed: ${error.message}`);
+      showPreview = false;
+    } finally {
+      isPreviewing = false;
+    }
+  }
+  
+  function closePreview() {
+    showPreview = false;
+    previewImage = null;
+  }
+
   async function startScan() {
     if (!selectedScanner) {
       alert('Please select a scanner');
@@ -711,6 +868,8 @@
       });
 
       if (response.ok) {
+        // Close preview if open
+        if (showPreview) closePreview();
         await loadData();
         alert('✅ Scan started successfully');
       } else {
@@ -806,6 +965,26 @@
         return;
       }
       config.connection = targetConnection;
+    } else if (targetType === 'Google Drive' || targetType === 'Dropbox' || targetType === 'OneDrive') {
+      if (!targetAccessToken) {
+        alert('Please enter access token');
+        return;
+      }
+      config.access_token = targetAccessToken;
+      if (targetFolderId) config.folder_id = targetFolderId;
+      if (targetFolderPath) config.folder_path = targetFolderPath;
+      // Use folder_path or folder_id as connection display
+      config.connection = targetFolderPath || targetFolderId || '/';
+    } else if (targetType === 'Nextcloud') {
+      if (!targetWebdavUrl || !targetUsername || !targetPassword) {
+        alert('Please fill in WebDAV URL, username and password');
+        return;
+      }
+      config.webdav_url = targetWebdavUrl;
+      config.username = targetUsername;
+      config.password = targetPassword;
+      config.upload_path = targetWebdavPath || '/Scans';
+      config.connection = targetWebdavUrl;
     }
 
     const payload = {
@@ -848,6 +1027,11 @@
         targetEmailFrom = '';
         targetUseTLS = true;
         targetApiToken = '';
+        targetAccessToken = '';
+        targetFolderId = '';
+        targetFolderPath = '';
+        targetWebdavUrl = '';
+        targetWebdavPath = '';
         await loadTargets();
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
@@ -1326,11 +1510,54 @@
           />
           <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">{t.filenameDesc}</p>
           
-          <button class="primary block" on:click={startScan}>{t.startScanButton}</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button 
+              class="ghost block" 
+              on:click={previewScan} 
+              disabled={!selectedScanner || isPreviewing}
+              style="flex: 1;"
+            >
+              {isPreviewing ? t.previewing : t.previewScan}
+            </button>
+            <button 
+              class="primary block" 
+              on:click={startScan}
+              style="flex: 2;"
+            >
+              {t.startScanButton}
+            </button>
+          </div>
+          <p class="muted small" style="margin-top: 0.5rem;">{t.previewDesc}</p>
         </div>
       </div>
     </div>
   </SectionCard>
+  
+  <!-- Preview Modal -->
+  {#if showPreview}
+    <div style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 2rem;" on:click={closePreview}>
+      <div class="card" style="max-width: 90%; max-height: 90%; overflow: auto; padding: 2rem;" on:click|stopPropagation>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h2>{t.previewScan}</h2>
+          <button class="ghost" on:click={closePreview}>✕</button>
+        </div>
+        
+        {#if isPreviewing}
+          <div style="text-align: center; padding: 4rem;">
+            <p class="muted">{t.previewing}</p>
+          </div>
+        {:else if previewImage}
+          <div style="text-align: center; margin-bottom: 1.5rem;">
+            <img src={previewImage} alt="Scan preview" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border);" />
+          </div>
+          <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button class="ghost" on:click={closePreview}>{t.closePreview}</button>
+            <button class="primary" on:click={startScan}>{t.proceedToScan}</button>
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
 
   <!-- Active Scans Section -->
   <SectionCard id="active-scans" title={t.activeScans} subtitle={activeJobs.length > 0 ? t.scansInProgress : lastCompletedJob ? t.mostRecentScan : t.noScansYet}>
@@ -1504,6 +1731,12 @@
             <option>Email</option>
             <option>Paperless-ngx</option>
             <option>Webhook</option>
+            <optgroup label={t.cloudTarget}>
+              <option>Google Drive</option>
+              <option>Dropbox</option>
+              <option>OneDrive</option>
+              <option>Nextcloud</option>
+            </optgroup>
           </select>
           <label for="target-name">{t.name}</label>
           <input id="target-name" type="text" placeholder={t.namePlaceholder} bind:value={targetName} />
@@ -1554,6 +1787,34 @@
             <label for="target-connection">{t.webhookUrl}</label>
             <input id="target-connection" type="url" placeholder={t.webhookUrlPlaceholder} bind:value={targetConnection} />
             <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Scanned file will be POSTed to this URL</p>
+          {:else if targetType === 'Google Drive'}
+            <label for="target-access-token">{t.accessToken}</label>
+            <input id="target-access-token" type="password" placeholder={t.accessTokenPlaceholder} bind:value={targetAccessToken} />
+            <label for="target-folder-id">{t.folderId}</label>
+            <input id="target-folder-id" type="text" placeholder={t.folderIdPlaceholder} bind:value={targetFolderId} />
+            <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Get OAuth2 token from Google Cloud Console. Leave folder ID empty for root.</p>
+          {:else if targetType === 'Dropbox'}
+            <label for="target-access-token">{t.accessToken}</label>
+            <input id="target-access-token" type="password" placeholder={t.accessTokenPlaceholder} bind:value={targetAccessToken} />
+            <label for="target-folder-path">{t.folderPath}</label>
+            <input id="target-folder-path" type="text" placeholder={t.folderPathPlaceholder} bind:value={targetFolderPath} />
+            <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Get OAuth2 token from Dropbox App Console. Leave path empty for root.</p>
+          {:else if targetType === 'OneDrive'}
+            <label for="target-access-token">{t.accessToken}</label>
+            <input id="target-access-token" type="password" placeholder={t.accessTokenPlaceholder} bind:value={targetAccessToken} />
+            <label for="target-folder-path">{t.folderPath}</label>
+            <input id="target-folder-path" type="text" placeholder={t.folderPathPlaceholder} bind:value={targetFolderPath} />
+            <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Get OAuth2 token from Azure AD. Leave path empty for root.</p>
+          {:else if targetType === 'Nextcloud'}
+            <label for="target-webdav-url">{t.webdavUrl}</label>
+            <input id="target-webdav-url" type="url" placeholder={t.webdavUrlPlaceholder} bind:value={targetWebdavUrl} />
+            <label for="target-username">{t.username}</label>
+            <input id="target-username" type="text" placeholder={t.usernamePlaceholder} bind:value={targetUsername} />
+            <label for="target-password">{t.password}</label>
+            <input id="target-password" type="password" placeholder={t.passwordPlaceholder} bind:value={targetPassword} />
+            <label for="target-webdav-path">{t.webdavPath}</label>
+            <input id="target-webdav-path" type="text" placeholder={t.webdavPathPlaceholder} bind:value={targetWebdavPath} />
+            <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Use WebDAV URL from Nextcloud settings.</p>
           {/if}
           
           <div style="display: flex; gap: 0.5rem;">
@@ -1566,6 +1827,121 @@
         </div>
       </div>
     </div>
+  </SectionCard>
+
+  <!-- Statistics Dashboard -->
+  <SectionCard id="stats" title={t.stats} subtitle={t.statsSubtitle}>
+    {#if isLoadingStats}
+      <p class="muted">⏳ Loading statistics...</p>
+    {:else if statsOverview}
+      <div style="margin-bottom: 2rem;">
+        <h3>{t.overview}</h3>
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+          <div class="card" style="padding: 1.5rem; text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--primary);">{statsOverview.total_scans || 0}</div>
+            <div class="muted">{t.totalScans}</div>
+          </div>
+          <div class="card" style="padding: 1.5rem; text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--success);">{statsOverview.success_rate || 0}%</div>
+            <div class="muted">{t.successRate}</div>
+          </div>
+          <div class="card" style="padding: 1.5rem; text-align: center;">
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--info);">{statsOverview.average_scans_per_day || 0}</div>
+            <div class="muted">{t.avgScansPerDay}</div>
+          </div>
+        </div>
+        
+        <div class="grid two-cols" style="margin-bottom: 2rem;">
+          <div class="card" style="padding: 1.5rem;">
+            <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--muted);">{t.mostUsedScanner}</div>
+            <div style="font-size: 1.25rem; font-weight: 600;">{statsOverview.most_used_scanner || 'N/A'}</div>
+          </div>
+          <div class="card" style="padding: 1.5rem;">
+            <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--muted);">{t.mostUsedTarget}</div>
+            <div style="font-size: 1.25rem; font-weight: 600;">{statsOverview.most_used_target || 'N/A'}</div>
+          </div>
+        </div>
+      </div>
+      
+      {#if statsTimeline.length > 0}
+        <div style="margin-bottom: 2rem;">
+          <h3>{t.timeline}</h3>
+          <div class="card" style="padding: 1.5rem;">
+            <div style="display: grid; grid-template-columns: 120px repeat(3, 1fr); gap: 0.5rem; font-size: 0.875rem;">
+              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border);">Date</div>
+              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border); text-align: center;">Total</div>
+              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border); text-align: center;">Successful</div>
+              <div style="font-weight: 600; padding: 0.5rem; border-bottom: 2px solid var(--border); text-align: center;">Failed</div>
+              
+              {#each statsTimeline.slice(0, 10) as day}
+                <div style="padding: 0.5rem;">{day.date}</div>
+                <div style="padding: 0.5rem; text-align: center;">{day.total}</div>
+                <div style="padding: 0.5rem; text-align: center; color: var(--success);">{day.successful}</div>
+                <div style="padding: 0.5rem; text-align: center; color: var(--danger);">{day.failed}</div>
+              {/each}
+            </div>
+          </div>
+        </div>
+      {/if}
+      
+      {#if statsScanners.length > 0}
+        <div style="margin-bottom: 2rem;">
+          <h3>{t.scannerStats}</h3>
+          <ul class="list">
+            {#each statsScanners as scanner}
+              <li>
+                <div class="list-title">{scanner.scanner}</div>
+                <div class="muted">
+                  {t.scans}: {scanner.total_scans} · 
+                  {t.successful}: {scanner.successful} ({scanner.success_rate}%) · 
+                  {t.lastUsed}: {new Date(scanner.last_used).toLocaleDateString()}
+                </div>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
+      
+      {#if statsTargets.length > 0}
+        <div style="margin-bottom: 2rem;">
+          <h3>{t.targetStats}</h3>
+          <ul class="list">
+            {#each statsTargets as target}
+              <li>
+                <div class="list-title">{target.target}</div>
+                <div class="muted">
+                  Deliveries: {target.total_deliveries} · 
+                  {t.successful}: {target.successful} ({target.success_rate}%) · 
+                  {t.lastUsed}: {new Date(target.last_used).toLocaleDateString()}
+                </div>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
+      
+      {#if statsHourly.length > 0}
+        <div>
+          <h3>{t.hourlyDistribution}</h3>
+          <div class="card" style="padding: 1.5rem;">
+            <div style="display: flex; align-items: flex-end; gap: 0.25rem; height: 150px;">
+              {#each statsHourly as hour}
+                <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
+                  <div 
+                    style="width: 100%; background: var(--primary); border-radius: 4px 4px 0 0; transition: all 0.3s;"
+                    style:height="{hour.count > 0 ? (hour.count / Math.max(...statsHourly.map(h => h.count)) * 100) : 2}%"
+                    title="{hour.hour}:00 - {hour.count} scans"
+                  ></div>
+                  <div style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--muted);">{hour.hour}</div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        </div>
+      {/if}
+    {:else}
+      <p class="muted">No statistics available yet. Start scanning to see analytics.</p>
+    {/if}
   </SectionCard>
 
   <SectionCard id="history" title={t.history} subtitle={t.historySubtitle}>
