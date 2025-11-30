@@ -364,8 +364,12 @@ async def get_device(device_id: str):
     )
 
 
-@router.patch("/{device_id}/favorite")
-async def toggle_device_favorite(device_id: str, is_favorite: bool):
+class ToggleFavoriteRequest(BaseModel):
+    is_favorite: bool
+
+
+@router.post("/{device_id}/favorite")
+async def toggle_device_favorite(device_id: str, request: ToggleFavoriteRequest):
     """Toggle favorite status for a device (scanner or printer)."""
     device_repo = DeviceRepository()
     
@@ -375,7 +379,7 @@ async def toggle_device_favorite(device_id: str, is_favorite: bool):
         raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
     
     # Update favorite status
-    device.is_favorite = is_favorite
+    device.is_favorite = request.is_favorite
     
     # Update in database
     from app.core.database import get_db
@@ -386,10 +390,10 @@ async def toggle_device_favorite(device_id: str, is_favorite: bool):
             UPDATE devices 
             SET is_favorite = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        """, (1 if is_favorite else 0, device_id))
+        """, (1 if request.is_favorite else 0, device_id))
     
     return {
         "status": "updated",
         "device_id": device_id,
-        "is_favorite": is_favorite
+        "is_favorite": request.is_favorite
     }

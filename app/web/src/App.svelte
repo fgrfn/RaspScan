@@ -327,8 +327,10 @@
   async function toggleDeviceFavorite(deviceId, isFavorite) {
     try {
       const encodedId = encodeURIComponent(deviceId);
-      const response = await fetch(`${API_BASE}/devices/${encodedId}/favorite?is_favorite=${isFavorite}`, {
-        method: 'PATCH'
+      const response = await fetch(`${API_BASE}/devices/${encodedId}/favorite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_favorite: isFavorite })
       });
       
       if (response.ok) {
