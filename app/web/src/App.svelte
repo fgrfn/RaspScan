@@ -908,7 +908,7 @@
     </div>
   </section>
 
-  <SectionCard id="scan" {title}=t.scan subtitle="Start server-side scans and route results to targets.">
+  <SectionCard id="scan" title={t.scan} subtitle="Start server-side scans and route results to targets.">
     <div class="grid two-cols">
       <div>
         <h3>Configured Scanners</h3>
