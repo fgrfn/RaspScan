@@ -168,6 +168,8 @@ h1 { margin: 8px 0; font-size: 36px; letter-spacing: -0.04em; }
 .panel-body label { font-weight: 600; }
 .panel-body input, .panel-body select { padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255, 255, 255, 0.02); color: var(--text); }
 .panel-body input[type='file'] { padding: 8px; }
+.panel-body select option { background: var(--bg); color: var(--text); padding: 8px; }
+.panel-body select:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .block { width: 100%; text-align: center; }
 .mt { margin-top: 16px; }
