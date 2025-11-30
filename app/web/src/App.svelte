@@ -676,23 +676,29 @@
     isLoadingStats = true;
     try {
       // Load all stats in parallel
-      const [overviewRes, timelineRes, scannersRes, targetsRes, hourlyRes] = await Promise.all([
+      const [overviewRes, timelineRes, scannersRes, targetsRes] = await Promise.all([
         fetch(`${API_BASE}/stats/overview`),
         fetch(`${API_BASE}/stats/timeline?days=30`),
         fetch(`${API_BASE}/stats/scanners`),
-        fetch(`${API_BASE}/stats/targets`),
-        fetch(`${API_BASE}/stats/hourly`)
+        fetch(`${API_BASE}/stats/targets`)
       ]);
       
       if (overviewRes.ok) statsOverview = await overviewRes.json();
       if (timelineRes.ok) statsTimeline = await timelineRes.json();
       if (scannersRes.ok) statsScanners = await scannersRes.json();
       if (targetsRes.ok) statsTargets = await targetsRes.json();
-      if (hourlyRes.ok) {
-        statsHourly = await hourlyRes.json();
-        console.log('Hourly stats loaded:', statsHourly);
-        console.log('Non-zero hours:', statsHourly.filter(h => h.count > 0));
-      }
+      
+      // Calculate hourly stats from history in browser timezone
+      const hourlyCount = Array(24).fill(0);
+      history.forEach(job => {
+        if (job.job_type === 'scan' && job.created_at) {
+          const date = new Date(job.created_at + 'Z'); // Parse as UTC
+          const hour = date.getHours(); // Convert to local time
+          hourlyCount[hour]++;
+        }
+      });
+      
+      statsHourly = hourlyCount.map((count, hour) => ({ hour, count }));
       
       console.log('Stats loaded:', { statsOverview, statsTimeline: statsTimeline.length, hourlyCount: statsHourly.length });
     } catch (error) {
