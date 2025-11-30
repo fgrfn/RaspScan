@@ -102,18 +102,19 @@ class Database:
                 )
             """)
             
-            # Devices table (printers AND scanners)
+            # Devices table (unified printers and scanners)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS devices (
                     id TEXT PRIMARY KEY,
                     device_type TEXT NOT NULL,
                     name TEXT NOT NULL,
-                    uri TEXT NOT NULL,
+                    uri TEXT NOT NULL UNIQUE,
                     make TEXT,
                     model TEXT,
                     connection_type TEXT,
                     description TEXT,
                     is_active INTEGER DEFAULT 1,
+                    is_favorite INTEGER DEFAULT 0,
                     last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

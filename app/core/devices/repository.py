@@ -20,6 +20,7 @@ class DeviceRecord:
         connection_type: Optional[str] = None,
         description: Optional[str] = None,
         is_active: bool = True,
+        is_favorite: bool = False,
         last_seen: Optional[datetime] = None,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None
@@ -33,6 +34,7 @@ class DeviceRecord:
         self.connection_type = connection_type
         self.description = description
         self.is_active = is_active
+        self.is_favorite = is_favorite
         self.last_seen = last_seen
         self.created_at = created_at
         self.updated_at = updated_at
@@ -49,6 +51,7 @@ class DeviceRecord:
             'connection_type': self.connection_type,
             'description': self.description,
             'is_active': self.is_active,
+            'is_favorite': self.is_favorite,
             'last_seen': self.last_seen.isoformat() if self.last_seen else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
@@ -67,8 +70,8 @@ class DeviceRepository:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO devices 
-                (id, device_type, name, uri, make, model, connection_type, description, is_active, last_seen)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                (id, device_type, name, uri, make, model, connection_type, description, is_active, is_favorite, last_seen)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """, (
                 device.id,
                 device.device_type,
@@ -78,7 +81,8 @@ class DeviceRepository:
                 device.model,
                 device.connection_type,
                 device.description,
-                1 if device.is_active else 0
+                1 if device.is_active else 0,
+                1 if device.is_favorite else 0
             ))
     
     def get_device(self, device_id: str) -> Optional[DeviceRecord]:
@@ -113,7 +117,7 @@ class DeviceRepository:
             if active_only:
                 query += " AND is_active = 1"
             
-            query += " ORDER BY created_at DESC"
+            query += " ORDER BY is_favorite DESC, created_at DESC"
             
             cursor.execute(query, params)
             return [self._row_to_device(row) for row in cursor.fetchall()]
@@ -176,6 +180,7 @@ class DeviceRepository:
             connection_type=row['connection_type'],
             description=row['description'],
             is_active=bool(row['is_active']),
+            is_favorite=bool(row['is_favorite']) if 'is_favorite' in row.keys() else False,
             last_seen=datetime.fromisoformat(row['last_seen']) if row['last_seen'] else None,
             created_at=datetime.fromisoformat(row['created_at']) if row['created_at'] else None,
             updated_at=datetime.fromisoformat(row['updated_at']) if row['updated_at'] else None

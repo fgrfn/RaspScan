@@ -52,6 +52,7 @@ class DeviceResponse(BaseModel):
     connection_type: str | None
     description: str | None
     is_active: bool
+    is_favorite: bool = False
     status: str | None = None  # Online status
 
 
@@ -276,6 +277,7 @@ async def add_device(request: AddDeviceRequest):
         connection_type=device.connection_type,
         description=device.description,
         is_active=device.is_active,
+        is_favorite=device.is_favorite,
         status="added"
     )
 
@@ -357,5 +359,37 @@ async def get_device(device_id: str):
         connection_type=device.connection_type,
         description=device.description,
         is_active=device.is_active,
+        is_favorite=device.is_favorite,
         status=status
     )
+
+
+@router.patch("/{device_id}/favorite")
+async def toggle_device_favorite(device_id: str, is_favorite: bool):
+    """Toggle favorite status for a device (scanner or printer)."""
+    device_repo = DeviceRepository()
+    
+    # Get device
+    device = device_repo.get_device(device_id)
+    if not device:
+        raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
+    
+    # Update favorite status
+    device.is_favorite = is_favorite
+    
+    # Update in database
+    from app.core.database import get_db
+    db = get_db()
+    with db.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE devices 
+            SET is_favorite = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (1 if is_favorite else 0, device_id))
+    
+    return {
+        "status": "updated",
+        "device_id": device_id,
+        "is_favorite": is_favorite
+    }

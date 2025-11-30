@@ -113,6 +113,11 @@
         const devices = await res.json();
         printers = devices.filter(d => d.device_type === 'printer');
         scanners = devices.filter(d => d.device_type === 'scanner');
+        // Auto-select favorite scanner if none selected
+        const favoriteScanner = scanners.find(s => s.is_favorite);
+        if (favoriteScanner && !selectedScanner) {
+          selectedScanner = favoriteScanner.id;
+        }
         updateStats();
         console.log(`[TIMING] loadDevices: ${(performance.now() - start).toFixed(0)}ms`);
       }
@@ -315,6 +320,23 @@
       }
     } catch (error) {
       console.error('Toggle favorite error:', error);
+      alert('Failed to update favorite');
+    }
+  }
+
+  async function toggleDeviceFavorite(deviceId, isFavorite) {
+    try {
+      const response = await fetch(`${API_BASE}/devices/${deviceId}/favorite?is_favorite=${isFavorite}`, {
+        method: 'PATCH'
+      });
+      
+      if (response.ok) {
+        await loadDevices();
+      } else {
+        alert('Failed to update favorite');
+      }
+    } catch (error) {
+      console.error('Toggle device favorite error:', error);
       alert('Failed to update favorite');
     }
   }
@@ -546,7 +568,7 @@
               <li style="display: flex; align-items: center; justify-content: space-between;">
                 <div style="flex: 1;">
                   <div class="list-title">
-                    {scanner.name}
+                    {#if scanner.is_favorite}⭐ {/if}{scanner.name}
                     {#if scanner.connection_type && scanner.connection_type.includes('eSCL')}
                       <span class="badge success" style="margin-left: 0.5rem; font-size: 0.7rem;">⭐ Recommended</span>
                     {/if}
@@ -554,7 +576,16 @@
                   <div class="muted">{scanner.connection_type || scanner.type || 'Unknown'}</div>
                   <span class="badge {scanner.status === 'online' ? 'success' : 'warning'}">{scanner.status || 'unknown'}</span>
                 </div>
-                <button class="ghost small" on:click={() => removeDevice(scanner.id, 'scanner')}>Remove</button>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button 
+                    class="ghost small" 
+                    on:click={() => toggleDeviceFavorite(scanner.id, !scanner.is_favorite)}
+                    title="{scanner.is_favorite ? 'Remove from' : 'Add to'} favorites"
+                  >
+                    {scanner.is_favorite ? '⭐' : '☆'}
+                  </button>
+                  <button class="ghost small" on:click={() => removeDevice(scanner.id, 'scanner')}>Remove</button>
+                </div>
               </li>
             {/each}
           </ul>
@@ -621,8 +652,8 @@
             <option value="">-- Select scanner --</option>
             {#each scanners as scanner}
               <option value={scanner.id}>
-                {scanner.name}
-                {#if scanner.connection_type && scanner.connection_type.includes('eSCL')}⭐ Recommended{/if}
+                {#if scanner.is_favorite}⭐ {/if}{scanner.name}
+                {#if scanner.connection_type && scanner.connection_type.includes('eSCL')} (Recommended){/if}
               </option>
             {/each}
           </select>
