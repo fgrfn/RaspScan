@@ -51,6 +51,7 @@
   let isLoadingTargets = true;
   let isLoadingHistory = true;
   let pollInterval = null;
+  let expandedThumbnail = null; // Track which thumbnail is expanded
 
   const navLinks = [
     { label: 'Dashboard', href: '#dashboard' },
@@ -850,18 +851,16 @@
       {#each activeJobs as job}
         <div class="panel" style="padding: 1rem;">
           <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
-            <span class={`badge ${job.status === 'running' ? 'warning' : 'info'}`} style="font-size: 0.875rem;">
-              {job.status === 'queued' ? '⏳ Queued' : '🔄 Scanning'}
-            </span>
             <span class="muted" style="font-size: 0.875rem;">Job #{job.id.slice(0, 8)}</span>
           </div>
           
           {#if job.thumbnailUrl}
-            <div style="margin-bottom: 0.75rem;">
+            <div style="margin-bottom: 0.75rem; cursor: pointer;" on:click={() => expandedThumbnail = expandedThumbnail === job.id ? null : job.id}>
               <img 
                 src={job.thumbnailUrl} 
                 alt="Scan preview" 
-                style="width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--border);"
+                style="width: {expandedThumbnail === job.id ? '100%' : '50%'}; height: auto; border-radius: 6px; border: 1px solid var(--border); transition: width 0.3s ease;"
+                title="Click to {expandedThumbnail === job.id ? 'shrink' : 'expand'}"
               />
             </div>
           {:else if job.status === 'running'}
@@ -869,6 +868,20 @@
               <p class="muted">🖨️ Scanning...</p>
             </div>
           {/if}
+          
+          <!-- Status breakdown -->
+          <div style="margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <span class={`badge ${job.status === 'running' ? 'warning' : 'info'}`} style="font-size: 0.875rem;">
+                {job.status === 'queued' ? '⏳ Queued' : '🔄 Scanning'}
+              </span>
+              <span style="font-size: 0.875rem; font-weight: 500;">Scan</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="badge" style="font-size: 0.875rem; opacity: 0.5;">⏸️ Waiting</span>
+              <span style="font-size: 0.875rem; opacity: 0.5;">Upload</span>
+            </div>
+          </div>
           
           <div style="font-size: 0.875rem;">
             <div style="margin-bottom: 0.25rem;">
@@ -887,21 +900,33 @@
       {#if lastCompletedJob && activeJobs.length === 0}
         <div class="panel" style="padding: 1rem;">
           <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
-            <span class="badge success" style="font-size: 0.875rem;">
-              ✅ Completed
-            </span>
             <span class="muted" style="font-size: 0.875rem;">Job #{lastCompletedJob.id.slice(0, 8)}</span>
           </div>
           
           {#if lastCompletedJob.thumbnailUrl}
-            <div style="margin-bottom: 0.75rem;">
+            <div style="margin-bottom: 0.75rem; cursor: pointer;" on:click={() => expandedThumbnail = expandedThumbnail === lastCompletedJob.id ? null : lastCompletedJob.id}>
               <img 
                 src={lastCompletedJob.thumbnailUrl} 
                 alt="Scan preview" 
-                style="width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--border);"
+                style="width: {expandedThumbnail === lastCompletedJob.id ? '100%' : '50%'}; height: auto; border-radius: 6px; border: 1px solid var(--border); transition: width 0.3s ease;"
+                title="Click to {expandedThumbnail === lastCompletedJob.id ? 'shrink' : 'expand'}"
               />
             </div>
           {/if}
+          
+          <!-- Status breakdown -->
+          <div style="margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <span class="badge success" style="font-size: 0.875rem;">✅ Done</span>
+              <span style="font-size: 0.875rem; font-weight: 500;">Scan</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class={`badge ${lastCompletedJob.message ? 'danger' : 'success'}`} style="font-size: 0.875rem;">
+                {lastCompletedJob.message ? '❌ Failed' : '✅ Done'}
+              </span>
+              <span style="font-size: 0.875rem; font-weight: 500;">Upload</span>
+            </div>
+          </div>
           
           <div style="font-size: 0.875rem;">
             <div style="margin-bottom: 0.25rem;">
