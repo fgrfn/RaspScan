@@ -30,6 +30,7 @@
   let newPrinterName = '';
   let discoveredDevices = [];
   let isDiscovering = false;
+  let lastDiscoveryTime = null;
 
   const navLinks = [
     { label: 'Dashboard', href: '#dashboard' },
@@ -59,10 +60,29 @@
         fetch(`${API_BASE}/history`)
       ]);
 
-      printers = await printersRes.json();
-      scanners = await scannersRes.json();
-      targets = await targetsRes.json();
-      history = await historyRes.json();
+      if (printersRes.ok) {
+        printers = await printersRes.json();
+      } else {
+        console.error('Failed to load printers:', printersRes.status);
+      }
+      
+      if (scannersRes.ok) {
+        scanners = await scannersRes.json();
+      } else {
+        console.error('Failed to load scanners:', scannersRes.status);
+      }
+      
+      if (targetsRes.ok) {
+        targets = await targetsRes.json();
+      } else {
+        console.error('Failed to load targets:', targetsRes.status);
+      }
+      
+      if (historyRes.ok) {
+        history = await historyRes.json();
+      } else {
+        console.error('Failed to load history:', historyRes.status);
+      }
 
       updateStats();
     } catch (error) {
@@ -198,12 +218,15 @@
       const response = await fetch(`${API_BASE}/printers/discover`);
       if (response.ok) {
         discoveredDevices = await response.json();
+        lastDiscoveryTime = new Date();
+        console.log('Discovery complete:', discoveredDevices.length, 'devices found');
       } else {
-        alert('Failed to discover printers');
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        alert(`Failed to discover printers: ${error.detail || response.statusText}`);
       }
     } catch (error) {
       console.error('Discovery error:', error);
-      alert('Failed to discover printers');
+      alert(`Failed to discover printers: ${error.message}`);
     } finally {
       isDiscovering = false;
     }
@@ -490,6 +513,11 @@
         <button class="primary" on:click={discoverPrinters} disabled={isDiscovering}>
           {isDiscovering ? 'Searching...' : 'Discover Printers'}
         </button>
+        {#if lastDiscoveryTime}
+          <p class="muted small" style="margin-top: 0.5rem;">
+            Last scan: {lastDiscoveryTime.toLocaleTimeString()} · Click "Discover" to refresh
+          </p>
+        {/if}
         
         {#if discoveredDevices.length > 0}
           <h4 class="mt">Discovered Devices ({discoveredDevices.length})</h4>
