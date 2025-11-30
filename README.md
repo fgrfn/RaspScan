@@ -34,9 +34,9 @@ If you prefer manual installation:
 1. Install dependencies: `sudo apt install avahi-daemon sane-utils sane-airscan python3-venv smbclient ssh imagemagick nodejs npm`
 2. Create virtualenv: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 3. Build Web UI: `cd app/web && npm install && npm run build && cd ../..`
-4. Copy service file: `sudo cp installer/raspscan.service /etc/systemd/system/`
-5. Edit service paths in `/etc/systemd/system/raspscan.service`
-6. Enable service: `sudo systemctl enable --now raspscan`
+4. Copy service file: `sudo cp installer/scan2target.service /etc/systemd/system/`
+5. Edit service paths in `/etc/systemd/system/scan2target.service`
+6. Enable service: `sudo systemctl enable --now scan2target`
 7. Setup cleanup: `chmod +x scripts/cleanup.sh && (crontab -l; echo "0 3 * * * $(pwd)/scripts/cleanup.sh") | crontab -`
 
 ## Quick Start
@@ -91,7 +91,7 @@ Response:
   "user": {
     "id": 1,
     "username": "admin",
-    "email": "admin@raspscan.local",
+    "email": "admin@scan2target.local",
     "is_admin": true
   }
 }
@@ -109,14 +109,14 @@ By default, authentication is **optional**. To require authentication for all AP
 
 Create `.env` file:
 ```bash
-RASPSCAN_REQUIRE_AUTH=true
-RASPSCAN_JWT_SECRET=your-secret-key-here
-RASPSCAN_JWT_EXPIRATION=3600
+SCAN2TARGET_REQUIRE_AUTH=true
+SCAN2TARGET_JWT_SECRET=your-secret-key-here
+SCAN2TARGET_JWT_EXPIRATION=3600
 ```
 
 Or set environment variables:
 ```bash
-export RASPSCAN_REQUIRE_AUTH=true
+export SCAN2TARGET_REQUIRE_AUTH=true
 ```
 
 ## Database & Persistence
@@ -141,7 +141,7 @@ cp scan2target.db scan2target.db.backup
 sqlite3 scan2target.db ".backup scan2target_backup.db"
 ```
 
-For HTTPS, place RaspScan behind Caddy or nginx with TLS termination and enable IP allowlists via configuration.
+For HTTPS, place Scan2Target behind Caddy or nginx with TLS termination and enable IP allowlists via configuration.
 
 ## Web UI Features
 
@@ -594,7 +594,7 @@ Scan2Target's open API makes integration easy:
 ```yaml
 # configuration.yaml
 rest_command:
-  raspscan_quick_scan:
+  scan2target_quick_scan:
     url: "http://SERVER_IP/api/v1/scan/start"
     method: POST
     content_type: "application/json"
@@ -610,7 +610,7 @@ button:
     name: "Quick Document Scan"
     icon: mdi:scanner
     press:
-      - service: rest_command.raspscan_quick_scan
+      - service: rest_command.scan2target_quick_scan
 
 sensor:
   - platform: rest

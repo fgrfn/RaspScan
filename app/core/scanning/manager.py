@@ -275,7 +275,7 @@ class ScannerManager:
             print(f"Starting scan with profile: {profile}")
             
             # Create temp output file
-            output_dir = Path(tempfile.gettempdir()) / 'raspscan' / 'scans'
+            output_dir = Path(tempfile.gettempdir()) / 'scan2target' / 'scans'
             output_dir.mkdir(parents=True, exist_ok=True)
             
             prefix = filename_prefix or 'scan'

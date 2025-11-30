@@ -1,1 +1,1 @@
-"""API router package for RaspScan."""
+"""API router package for Scan2Target."""

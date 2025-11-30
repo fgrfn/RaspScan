@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SERVICE_NAME="raspscan"
+SERVICE_NAME="scan2target"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VENV_DIR="${APP_DIR}/.venv"
@@ -70,7 +70,7 @@ create_service() {
     echo "[+] Writing systemd unit to ${SERVICE_FILE}..."
     cat > "${SERVICE_FILE}" <<SERVICE
 [Unit]
-Description=RaspScan FastAPI server
+Description=Scan2Target - Network Scan Server
 After=network.target
 
 [Service]
@@ -119,8 +119,8 @@ setup_cleanup_cron() {
         
         # Create log directory
         mkdir -p /var/log
-        touch /var/log/raspscan-cleanup.log
-        chown "${RUN_USER}:${RUN_USER}" /var/log/raspscan-cleanup.log
+        touch /var/log/scan2target-cleanup.log
+        chown "${RUN_USER}:${RUN_USER}" /var/log/scan2target-cleanup.log
     else
         echo "[!] Cleanup script not found at ${CLEANUP_SCRIPT}; skipping cron setup" >&2
     fi
@@ -129,10 +129,10 @@ setup_cleanup_cron() {
 print_info() {
     echo ""
     echo "╔═══════════════════════════════════════════════════════════════════╗"
-    echo "║                  RaspScan Installation Complete                  ║"
+    echo "║                Scan2Target Installation Complete                 ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo ""
-    echo "✓ RaspScan is running on: http://$(hostname -I | awk '{print $1}')"
+    echo "✓ Scan2Target is running on: http://$(hostname -I | awk '{print $1}')"
     echo "✓ API Documentation: http://$(hostname -I | awk '{print $1}')/docs"
     echo "✓ Health Check: http://$(hostname -I | awk '{print $1}')/health"
     echo ""
@@ -142,10 +142,10 @@ print_info() {
     echo ""
     echo "⚠️  SECURITY WARNING:"
     echo "  1. Change the default admin password immediately!"
-    echo "  2. Consider enabling authentication: export RASPSCAN_REQUIRE_AUTH=true"
+    echo "  2. Consider enabling authentication: export SCAN2TARGET_REQUIRE_AUTH=true"
     echo "  3. Set up HTTPS via reverse proxy (Caddy/nginx)"
     echo ""
-    echo "Database Location: ${APP_DIR}/raspscan.db"
+    echo "Database Location: ${APP_DIR}/scan2target.db"
     echo ""
     echo "Service Management:"
     echo "  Start:   sudo systemctl start ${SERVICE_NAME}"
@@ -158,7 +158,7 @@ print_info() {
     echo "  Scheduled: Daily at 3:00 AM"
     echo "  View cron: crontab -l"
     echo "  Manual run: cd ${APP_DIR} && python3 -m app.core.cleanup"
-    echo "  Cleanup logs: tail -f /var/log/raspscan-cleanup.log"
+    echo "  Cleanup logs: tail -f /var/log/scan2target-cleanup.log"
     echo ""
     echo "Web UI:"
     echo "  Production build already served at: http://$(hostname -I | awk '{print $1}')/"

@@ -396,13 +396,13 @@ class TargetManager:
         """Send file via email."""
         smtp_host = target.config.get('smtp_host', 'localhost')
         smtp_port = target.config.get('smtp_port', 587)
-        from_addr = target.config.get('from', 'raspscan@localhost')
+        from_addr = target.config.get('from', 'scan2target@localhost')
         to_addr = target.config['connection']  # email address
         
         msg = MIMEMultipart()
         msg['From'] = from_addr
         msg['To'] = to_addr
-        msg['Subject'] = f"RaspScan: {file.name}"
+        msg['Subject'] = f"Scan2Target: {file.name}"
         
         # Attach file
         with open(file, 'rb') as f:

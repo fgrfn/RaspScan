@@ -8,7 +8,7 @@ class CleanupManager:
     """Manages cleanup of temporary scan files and thumbnails."""
     
     def __init__(self):
-        self.scan_dir = Path('/tmp/raspscan/scans')
+        self.scan_dir = Path('/tmp/scan2target/scans')
         self.thumbnail_max_age_days = 7  # Keep thumbnails for 7 days
         self.failed_scan_max_age_days = 30  # Keep failed upload scans for 30 days
     
@@ -100,7 +100,7 @@ class CleanupManager:
     def cleanup_all(self):
         """Run all cleanup tasks."""
         print("=" * 60)
-        print("Starting RaspScan cleanup...")
+        print("Starting Scan2Target cleanup...")
         print("=" * 60)
         
         thumb_result = self.cleanup_old_thumbnails()

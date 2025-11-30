@@ -8,7 +8,7 @@ from typing import Generator
 class Database:
     """SQLite database connection manager."""
     
-    def __init__(self, db_path: str = "raspscan.db"):
+    def __init__(self, db_path: str = "scan2target.db"):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_schema()

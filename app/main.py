@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(stats.router, prefix="/api/v1/stats", tags=["stats"])
     
     # Serve thumbnails from temp directory
-    thumbnail_dir = Path("/tmp/raspscan/scans")
+    thumbnail_dir = Path("/tmp/scan2target/scans")
     thumbnail_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/thumbnails", StaticFiles(directory=str(thumbnail_dir)), name="thumbnails")
 

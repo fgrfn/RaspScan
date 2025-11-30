@@ -1,5 +1,5 @@
 <script>
-  export let brand = 'RaspScan';
+  export let brand = 'Scan2Target';
   export let links = [];
   export let currentLang = 'en';
   export let onLanguageChange = () => {};
