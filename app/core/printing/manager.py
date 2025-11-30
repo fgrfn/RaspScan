@@ -21,6 +21,9 @@ class PrinterManager:
         
         Returns:
             List of discovered devices with URI, make/model, and connection type.
+            Includes both:
+            - Unconfigured devices (available to add)
+            - Already configured printers (marked as 'configured')
             
         Notes:
             - USB printers: Auto-detected via usb:// URIs (e.g., usb://HP/ENVY%206400)
@@ -28,55 +31,138 @@ class PrinterManager:
             - Scanner-only devices won't appear here (use SANE for scanners)
         """
         devices = []
+        configured_uris = set()
+        
+        # First, get list of already configured printers
+        try:
+            configured_printers = self.list_printers()
+            for printer in configured_printers:
+                configured_uris.add(printer.get('uri', ''))
+        except Exception as e:
+            print(f"Warning: Could not list configured printers: {e}")
+        
         try:
             # Query CUPS for available devices (USB, network, etc.)
             result = subprocess.run(
                 ['lpinfo', '-v'],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=15
             )
             
-            if result.returncode == 0:
-                for line in result.stdout.strip().split('\n'):
-                    if line.startswith('direct ') or line.startswith('network '):
-                        # Parse: "direct usb://HP/ENVY%206400?serial=..." or "network dnssd://..."
-                        parts = line.split(' ', 1)
-                        if len(parts) == 2:
-                            uri = parts[1]
-                            device_type = 'unknown'
-                            
-                            if uri.startswith('usb://'):
-                                device_type = 'USB'
-                                # Extract manufacturer and model from USB URI
-                                match = re.search(r'usb://([^/]+)/([^?]+)', uri)
-                                if match:
-                                    make = match.group(1).replace('%20', ' ')
-                                    model = match.group(2).replace('%20', ' ').replace('%', ' ')
-                                else:
-                                    make, model = 'Unknown', 'USB Printer'
-                            elif uri.startswith('dnssd://') or uri.startswith('ipp://'):
-                                device_type = 'Network'
-                                # Extract name from DNS-SD or IPP URI
-                                match = re.search(r'//([^/]+)', uri)
-                                make, model = 'Network', match.group(1) if match else 'Printer'
-                            elif uri.startswith('socket://'):
-                                device_type = 'Network'
-                                make, model = 'Network', 'TCP/IP Printer'
-                            else:
-                                continue
-                                
-                            devices.append({
-                                'uri': uri,
-                                'type': device_type,
-                                'make': make,
-                                'model': model,
-                                'name': f"{make} {model}",
-                                'supported': True
-                            })
-        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
-            print(f"Error discovering devices: {e}")
+            if result.returncode != 0:
+                print(f"lpinfo -v failed with code {result.returncode}: {result.stderr}")
+                # If lpinfo fails, still return configured printers
+                return self._get_configured_as_discovered()
             
+            for line in result.stdout.strip().split('\n'):
+                if not line.strip():
+                    continue
+                    
+                # Parse different line formats from lpinfo -v:
+                # "direct usb://HP/ENVY%206400?serial=..."
+                # "network dnssd://..."
+                # "network ipp://..."
+                uri = None
+                device_type = 'Unknown'
+                
+                if line.startswith('direct '):
+                    uri = line[7:].strip()  # Remove "direct "
+                    device_type = 'USB' if uri.startswith('usb://') else 'Direct'
+                elif line.startswith('network '):
+                    uri = line[8:].strip()  # Remove "network "
+                    device_type = 'Network'
+                else:
+                    # Try to extract URI from other formats
+                    parts = line.split(None, 1)
+                    if len(parts) == 2 and '://' in parts[1]:
+                        uri = parts[1]
+                        if 'usb://' in uri:
+                            device_type = 'USB'
+                        elif 'network' in parts[0].lower() or 'dnssd' in uri or 'ipp' in uri:
+                            device_type = 'Network'
+                
+                if not uri:
+                    continue
+                
+                # Extract make and model from URI
+                make = 'Unknown'
+                model = 'Printer'
+                
+                if uri.startswith('usb://'):
+                    # Parse: usb://HP/ENVY%206400?serial=...
+                    match = re.search(r'usb://([^/]+)/([^?]+)', uri)
+                    if match:
+                        make = match.group(1).replace('%20', ' ').replace('%', ' ')
+                        model = match.group(2).replace('%20', ' ').replace('%', ' ')
+                    device_type = 'USB'
+                elif uri.startswith('dnssd://'):
+                    # Parse: dnssd://HP%20Envy%206400._ipp._tcp.local/
+                    match = re.search(r'dnssd://([^._]+)', uri)
+                    if match:
+                        name = match.group(1).replace('%20', ' ').replace('%', ' ')
+                        model = name
+                        make = 'Network'
+                    device_type = 'Network (AirPrint)'
+                elif uri.startswith('ipp://') or uri.startswith('ipps://'):
+                    # Parse: ipp://printer.local:631/ipp/print
+                    match = re.search(r'ipp[s]?://([^:/]+)', uri)
+                    if match:
+                        model = match.group(1)
+                        make = 'Network'
+                    device_type = 'Network (IPP)'
+                elif uri.startswith('socket://'):
+                    match = re.search(r'socket://([^:/]+)', uri)
+                    if match:
+                        model = match.group(1)
+                        make = 'Network'
+                    device_type = 'Network (TCP/IP)'
+                
+                is_configured = uri in configured_uris
+                
+                devices.append({
+                    'uri': uri,
+                    'type': device_type,
+                    'make': make,
+                    'model': model,
+                    'name': f"{make} {model}".strip(),
+                    'supported': True,
+                    'configured': is_configured,
+                    'status': 'Configured' if is_configured else 'Available'
+                })
+                
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            print(f"Error discovering devices: {e}")
+            # Return configured printers if discovery fails
+            return self._get_configured_as_discovered()
+        except Exception as e:
+            print(f"Unexpected error in discover_devices: {e}")
+            
+        # If no devices found, at least show configured printers
+        if not devices:
+            print("No devices found via lpinfo, showing configured printers")
+            return self._get_configured_as_discovered()
+            
+        return devices
+    
+    def _get_configured_as_discovered(self) -> List[dict]:
+        """Convert configured printers to discovery format as fallback."""
+        devices = []
+        try:
+            configured = self.list_printers()
+            for printer in configured:
+                devices.append({
+                    'uri': printer.get('uri', 'unknown'),
+                    'type': 'Configured',
+                    'make': printer.get('name', 'Unknown').split()[0] if printer.get('name') else 'Unknown',
+                    'model': ' '.join(printer.get('name', 'Printer').split()[1:]) if printer.get('name') else 'Printer',
+                    'name': printer.get('name', 'Unknown Printer'),
+                    'supported': True,
+                    'configured': True,
+                    'status': printer.get('status', 'unknown')
+                })
+        except Exception as e:
+            print(f"Could not get configured printers: {e}")
         return devices
 
     def list_printers(self) -> List[dict]:
@@ -84,7 +170,7 @@ class PrinterManager:
         List already configured printers in CUPS.
         
         Returns:
-            List of configured printers with status.
+            List of configured printers with status and connection type.
         """
         printers = []
         try:
@@ -96,34 +182,61 @@ class PrinterManager:
                 timeout=5
             )
             
-            if result.returncode == 0:
-                for line in result.stdout.strip().split('\n'):
-                    # Parse: "printer HP_Envy is idle.  enabled since..."
-                    match = re.match(r'printer (\S+) is (\S+)', line)
-                    if match:
-                        name = match.group(1)
-                        status = match.group(2)  # idle, processing, stopped
-                        
-                        # Get printer URI/device
-                        uri_result = subprocess.run(
-                            ['lpstat', '-v', name],
-                            capture_output=True,
-                            text=True,
-                            timeout=2
-                        )
-                        uri = 'unknown'
-                        if uri_result.returncode == 0:
-                            uri_match = re.search(r'device for \S+: (.+)', uri_result.stdout)
-                            if uri_match:
-                                uri = uri_match.group(1)
-                        
-                        printers.append({
-                            'id': name,
-                            'name': name.replace('_', ' '),
-                            'status': status,
-                            'uri': uri,
-                            'is_default': False
-                        })
+            if result.returncode != 0:
+                print(f"lpstat -p failed: {result.stderr}")
+                return []
+            
+            if not result.stdout.strip():
+                print("No printers configured in CUPS")
+                return []
+            
+            for line in result.stdout.strip().split('\n'):
+                if not line.strip():
+                    continue
+                    
+                # Parse: "printer HP_Envy is idle.  enabled since..."
+                match = re.match(r'printer (\S+) is (\S+)', line)
+                if match:
+                    name = match.group(1)
+                    status = match.group(2)  # idle, processing, stopped
+                    
+                    # Get printer URI/device
+                    uri_result = subprocess.run(
+                        ['lpstat', '-v', name],
+                        capture_output=True,
+                        text=True,
+                        timeout=2
+                    )
+                    uri = 'unknown'
+                    device_type = 'Unknown'
+                    
+                    if uri_result.returncode == 0:
+                        uri_match = re.search(r'device for \S+: (.+)', uri_result.stdout)
+                        if uri_match:
+                            uri = uri_match.group(1).strip()
+                            
+                            # Determine connection type from URI
+                            if uri.startswith('usb://'):
+                                device_type = 'USB'
+                            elif uri.startswith('dnssd://'):
+                                device_type = 'Network (AirPrint)'
+                            elif uri.startswith('ipp://') or uri.startswith('ipps://'):
+                                device_type = 'Network (IPP)'
+                            elif uri.startswith('socket://'):
+                                device_type = 'Network (TCP/IP)'
+                            elif uri.startswith('lpd://'):
+                                device_type = 'Network (LPD)'
+                            else:
+                                device_type = 'Other'
+                    
+                    printers.append({
+                        'id': name,
+                        'name': name.replace('_', ' '),
+                        'status': status,
+                        'uri': uri,
+                        'type': device_type,
+                        'is_default': False
+                    })
             
             # Check for default printer
             default_result = subprocess.run(
@@ -140,8 +253,10 @@ class PrinterManager:
                         if printer['id'] == default_name:
                             printer['is_default'] = True
                             
-        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
             print(f"Error listing printers: {e}")
+        except Exception as e:
+            print(f"Unexpected error in list_printers: {e}")
             
         return printers
 

@@ -348,7 +348,7 @@
             {#each printers as printer}
               <li>
                 <div class="list-title">{printer.name}</div>
-                <div class="muted">{printer.id}</div>
+                <div class="muted">{printer.type || 'Unknown'} - {printer.id}</div>
                 <span class={`badge ${printer.status === 'idle' ? 'success' : 'warning'}`}>{printer.status}</span>
               </li>
             {/each}
@@ -459,20 +459,28 @@
         </button>
         
         {#if discoveredDevices.length > 0}
-          <h4 class="mt">Discovered Devices</h4>
+          <h4 class="mt">Discovered Devices ({discoveredDevices.length})</h4>
           <ul class="list">
             {#each discoveredDevices as device}
               <li>
                 <div class="list-title">{device.name}</div>
                 <div class="muted">
-                  Type: {device.type} · {device.uri}
+                  {device.type}
+                  {#if device.configured}
+                    <span class="badge success" style="margin-left: 0.5rem;">Already Configured</span>
+                  {/if}
                 </div>
-                <button class="ghost small" on:click={() => addDiscoveredPrinter(device)}>Add</button>
+                <div class="muted small" style="font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem;">
+                  {device.uri}
+                </div>
+                {#if !device.configured}
+                  <button class="ghost small" on:click={() => addDiscoveredPrinter(device)}>Add to CUPS</button>
+                {/if}
               </li>
             {/each}
           </ul>
-        {:else if !isDiscovering && discoveredDevices.length === 0}
-          <p class="muted small mt">No devices discovered. Click "Discover Printers" to scan.</p>
+        {:else if !isDiscovering}
+          <p class="muted small mt">No devices found. Make sure printers are powered on and connected.</p>
         {/if}
       </div>
       <div class="panel">
