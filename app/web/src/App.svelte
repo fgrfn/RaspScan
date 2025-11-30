@@ -2245,19 +2245,32 @@
         <div>
           <h3>{t.hourlyDistribution}</h3>
           <div class="card" style="padding: 1.5rem;">
-            <div style="display: flex; align-items: flex-end; gap: 0.25rem; height: 150px;">
-              {#each statsHourly as hour}
-                {@const barHeight = hour.count > 0 ? Math.round((hour.count / maxCount) * 140) : 0}
-                <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
-                  {#if hour.count > 0}
-                    <div 
-                      style="width: 100%; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); border-radius: 4px 4px 0 0; height: {barHeight}px; min-height: 8px; transition: all 0.3s ease;"
-                      title="{hour.hour}:00 - {hour.count} {currentLang === 'de' ? 'Scans' : 'scans'}"
-                    ></div>
-                  {/if}
-                  <div style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--muted);">{hour.hour}</div>
-                </div>
-              {/each}
+            <div style="display: flex; gap: 1rem;">
+              <!-- Y-Axis -->
+              <div style="display: flex; flex-direction: column; justify-content: space-between; height: 150px; padding-right: 0.5rem; border-right: 1px solid var(--border);">
+                <div style="font-size: 0.7rem; color: var(--muted); text-align: right;">{maxCount}</div>
+                <div style="font-size: 0.7rem; color: var(--muted); text-align: right;">{Math.round(maxCount * 0.75)}</div>
+                <div style="font-size: 0.7rem; color: var(--muted); text-align: right;">{Math.round(maxCount * 0.5)}</div>
+                <div style="font-size: 0.7rem; color: var(--muted); text-align: right;">{Math.round(maxCount * 0.25)}</div>
+                <div style="font-size: 0.7rem; color: var(--muted); text-align: right;">0</div>
+              </div>
+              
+              <!-- Chart -->
+              <div style="flex: 1; display: flex; align-items: flex-end; gap: 0.25rem; height: 150px;">
+                {#each statsHourly as hour}
+                  {@const barHeight = hour.count > 0 ? Math.round((hour.count / maxCount) * 140) : 0}
+                  <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative;">
+                    {#if hour.count > 0}
+                      <div style="position: absolute; top: -{barHeight + 18}px; font-size: 0.65rem; color: var(--muted); font-weight: 600;">{hour.count}</div>
+                      <div 
+                        style="width: 100%; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); border-radius: 4px 4px 0 0; height: {barHeight}px; min-height: 8px; transition: all 0.3s ease;"
+                        title="{hour.hour}:00 - {hour.count} {currentLang === 'de' ? 'Scans' : 'scans'}"
+                      ></div>
+                    {/if}
+                    <div style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--muted);">{hour.hour}</div>
+                  </div>
+                {/each}
+              </div>
             </div>
           </div>
         </div>
