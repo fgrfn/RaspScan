@@ -53,23 +53,20 @@
 
   async function loadData() {
     try {
-      const [printersRes, scannersRes, targetsRes, historyRes] = await Promise.all([
-        fetch(`${API_BASE}/printers`),
-        fetch(`${API_BASE}/scan/devices`),
+      const [devicesRes, targetsRes, historyRes] = await Promise.all([
+        fetch(`${API_BASE}/devices`),
         fetch(`${API_BASE}/targets`),
         fetch(`${API_BASE}/history`)
       ]);
 
-      if (printersRes.ok) {
-        printers = await printersRes.json();
+      if (devicesRes.ok) {
+        const devices = await devicesRes.json();
+        // Split devices into printers and scanners
+        printers = devices.filter(d => d.device_type === 'printer');
+        scanners = devices.filter(d => d.device_type === 'scanner');
+        console.log('Loaded devices:', printers.length, 'printers,', scanners.length, 'scanners');
       } else {
-        console.error('Failed to load printers:', printersRes.status);
-      }
-      
-      if (scannersRes.ok) {
-        scanners = await scannersRes.json();
-      } else {
-        console.error('Failed to load scanners:', scannersRes.status);
+        console.error('Failed to load devices:', devicesRes.status);
       }
       
       if (targetsRes.ok) {
