@@ -665,11 +665,25 @@
   async function loadData() {
     // Load devices first (most important)
     loadDevices();
-    // Load other data in parallel
+    // Load other data in parallel, but wait for history before calculating hourly stats
     loadTargets();
-    loadHistory();
     loadProfiles();
-    loadStats();
+    await loadHistory(); // Wait for history to load
+    loadStats(); // Now calculate stats with history data
+  }
+  
+  function calculateHourlyStats() {
+    // Calculate hourly stats from history in browser timezone
+    const hourlyCount = Array(24).fill(0);
+    history.forEach(job => {
+      if (job.job_type === 'scan' && job.created_at) {
+        const date = new Date(job.created_at + 'Z'); // Parse as UTC
+        const hour = date.getHours(); // Convert to local time
+        hourlyCount[hour]++;
+      }
+    });
+    
+    statsHourly = hourlyCount.map((count, hour) => ({ hour, count }));
   }
   
   async function loadStats() {
@@ -688,17 +702,8 @@
       if (scannersRes.ok) statsScanners = await scannersRes.json();
       if (targetsRes.ok) statsTargets = await targetsRes.json();
       
-      // Calculate hourly stats from history in browser timezone
-      const hourlyCount = Array(24).fill(0);
-      history.forEach(job => {
-        if (job.job_type === 'scan' && job.created_at) {
-          const date = new Date(job.created_at + 'Z'); // Parse as UTC
-          const hour = date.getHours(); // Convert to local time
-          hourlyCount[hour]++;
-        }
-      });
-      
-      statsHourly = hourlyCount.map((count, hour) => ({ hour, count }));
+      // Calculate hourly stats from history
+      calculateHourlyStats();
       
       console.log('Stats loaded:', { statsOverview, statsTimeline: statsTimeline.length, hourlyCount: statsHourly.length });
     } catch (error) {
@@ -910,6 +915,9 @@
       { label: t.todayScans, value: String(todayScans), icon: '✅', sub: t.completedToday },
       { label: t.activeJobs, value: String(activeJobsCount).padStart(2, '0'), icon: '⏳', sub: t.inProgress }
     ];
+    
+    // Recalculate hourly stats when history changes
+    calculateHourlyStats();
   }
 
   function isToday(timestamp) {
