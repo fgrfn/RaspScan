@@ -117,15 +117,21 @@ class TargetManager:
                     if result.returncode == 0:
                         return {"status": "ok"}
                     else:
-                        error_msg = result.stderr.strip() if result.stderr else "Connection failed"
-                        # Common errors and user-friendly messages
-                        if "NT_STATUS_LOGON_FAILURE" in error_msg:
-                            error_msg = "Login failed - check username and password"
-                        elif "NT_STATUS_HOST_UNREACHABLE" in error_msg or "NT_STATUS_IO_TIMEOUT" in error_msg:
-                            error_msg = f"Server {server} not reachable - check IP address and network"
-                        elif "NT_STATUS_BAD_NETWORK_NAME" in error_msg:
-                            error_msg = f"Share not found on {server}"
+                        # Check both stdout and stderr for error messages
+                        error_output = result.stderr + result.stdout
+                        error_msg = error_output.strip() if error_output.strip() else "Connection failed"
                         
+                        # Common errors and user-friendly messages
+                        if "NT_STATUS_LOGON_FAILURE" in error_output:
+                            error_msg = f"Login failed - check username and password for {server}"
+                        elif "NT_STATUS_HOST_UNREACHABLE" in error_output or "NT_STATUS_IO_TIMEOUT" in error_output:
+                            error_msg = f"Server {server} not reachable - check IP address and network"
+                        elif "NT_STATUS_BAD_NETWORK_NAME" in error_output:
+                            error_msg = f"Share not found on {server}"
+                        elif "NT_STATUS_ACCESS_DENIED" in error_output:
+                            error_msg = f"Access denied - check permissions for user {username}"
+                        
+                        print(f"SMB validation failed: {error_msg}")
                         return {"status": "error", "message": error_msg}
                 except FileNotFoundError:
                     return {"status": "error", "message": "smbclient not installed. Install with: sudo apt install smbclient"}
