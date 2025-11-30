@@ -326,13 +326,16 @@
 
   async function toggleDeviceFavorite(deviceId, isFavorite) {
     try {
-      const response = await fetch(`${API_BASE}/devices/${deviceId}/favorite?is_favorite=${isFavorite}`, {
+      const encodedId = encodeURIComponent(deviceId);
+      const response = await fetch(`${API_BASE}/devices/${encodedId}/favorite?is_favorite=${isFavorite}`, {
         method: 'PATCH'
       });
       
       if (response.ok) {
         await loadDevices();
       } else {
+        const error = await response.json().catch(() => ({}));
+        console.error('Failed to update favorite:', error);
         alert('Failed to update favorite');
       }
     } catch (error) {
