@@ -8,6 +8,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 from pathlib import Path
 import requests
+import time
 
 from app.core.targets.models import TargetConfig
 from app.core.targets.repository import TargetRepository
@@ -244,8 +245,19 @@ class TargetManager:
         except Exception as e:
             return {"target_id": target_id, "status": "error", "message": str(e)}
 
-    def deliver(self, target_id: str, file_path: str, metadata: dict) -> None:
-        """Deliver scanned file to target destination."""
+    def deliver(self, target_id: str, file_path: str, metadata: dict, max_retries: int = 3) -> None:
+        """
+        Deliver scanned file to target destination with retry logic.
+        
+        Args:
+            target_id: Target identifier
+            file_path: Path to file to deliver
+            metadata: Additional metadata for delivery
+            max_retries: Maximum number of retry attempts (default: 3)
+        
+        Raises:
+            Exception: If delivery fails after all retries
+        """
         target = self.repo.get(target_id)
         if not target or not target.enabled:
             raise Exception(f"Target {target_id} not found or disabled")
@@ -254,21 +266,43 @@ class TargetManager:
         if not file.exists():
             raise Exception(f"File {file_path} not found")
         
-        try:
-            if target.type == 'SMB':
-                self._deliver_smb(target, file)
-            elif target.type == 'SFTP':
-                self._deliver_sftp(target, file)
-            elif target.type == 'Email':
-                self._deliver_email(target, file, metadata)
-            elif target.type == 'Paperless-ngx':
-                self._deliver_paperless(target, file, metadata)
-            elif target.type == 'Webhook':
-                self._deliver_webhook(target, file, metadata)
-            else:
-                raise Exception(f"Unsupported target type: {target.type}")
-        except Exception as e:
-            raise Exception(f"Delivery to {target.name} failed: {e}")
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"Delivery attempt {attempt + 1}/{max_retries} to {target.name}")
+                
+                if target.type == 'SMB':
+                    self._deliver_smb(target, file)
+                elif target.type == 'SFTP':
+                    self._deliver_sftp(target, file)
+                elif target.type == 'Email':
+                    self._deliver_email(target, file, metadata)
+                elif target.type == 'Paperless-ngx':
+                    self._deliver_paperless(target, file, metadata)
+                elif target.type == 'Webhook':
+                    self._deliver_webhook(target, file, metadata)
+                else:
+                    raise Exception(f"Unsupported target type: {target.type}")
+                
+                print(f"✓ Delivery to {target.name} successful")
+                return  # Success!
+                
+            except Exception as e:
+                last_error = e
+                print(f"✗ Delivery attempt {attempt + 1} failed: {str(e)}")
+                
+                # Don't retry on final attempt
+                if attempt < max_retries - 1:
+                    # Exponential backoff: 2s, 4s, 8s...
+                    delay = 2 ** attempt
+                    print(f"Retrying in {delay} seconds...")
+                    time.sleep(delay)
+                else:
+                    print(f"All {max_retries} delivery attempts failed")
+        
+        # All retries failed
+        raise Exception(f"Delivery to {target.name} failed after {max_retries} attempts: {last_error}")
     
     def _deliver_smb(self, target: TargetConfig, file: Path) -> None:
         """Upload file to SMB share."""

@@ -430,6 +430,63 @@
     }
   }
 
+  async function testTarget(targetId) {
+    const target = targets.find(t => t.id === targetId);
+    if (!target) return;
+    
+    const testBtn = event.target;
+    const originalText = testBtn.textContent;
+    testBtn.textContent = '⏳ Testing...';
+    testBtn.disabled = true;
+    
+    try {
+      const response = await fetch(`${API_BASE}/targets/${targetId}/test`, {
+        method: 'POST'
+      });
+      
+      const result = await response.json();
+      
+      if (result.status === 'ok') {
+        alert(`✅ Connection successful!\n\nTarget: ${target.name}\nType: ${target.type}`);
+      } else {
+        alert(`❌ Connection failed\n\n${result.message || 'Unable to connect to target'}`);
+      }
+    } catch (error) {
+      console.error('Test target error:', error);
+      alert(`❌ Test failed: ${error.message}`);
+    } finally {
+      testBtn.textContent = originalText;
+      testBtn.disabled = false;
+    }
+  }
+
+  async function retryUpload(jobId) {
+    const job = history.find(j => j.id === jobId);
+    if (!job) return;
+    
+    if (!confirm(`Retry upload for job ${jobId.slice(0, 8)}?\n\nTarget: ${job.target_id}`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE}/history/${jobId}/retry-upload`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ ${result.message}`);
+        await loadHistory();
+      } else {
+        const error = await response.json();
+        alert(`❌ Retry failed\n\n${error.detail || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Retry upload error:', error);
+      alert(`❌ Retry failed: ${error.message}`);
+    }
+  }
+
   async function removeTarget(targetId) {
     if (!confirm(`Remove target "${targetId}"?`)) {
       return;
@@ -885,6 +942,13 @@
                 <div style="display: flex; gap: 0.5rem;">
                   <button 
                     class="ghost small" 
+                    on:click={() => testTarget(target.id)}
+                    title="Test connection"
+                  >
+                    🔍 Test
+                  </button>
+                  <button 
+                    class="ghost small" 
                     on:click={() => toggleFavorite(target.id, !target.is_favorite)}
                     title="{target.is_favorite ? 'Remove from' : 'Add to'} favorites"
                   >
@@ -938,8 +1002,8 @@
     {:else if history.length === 0}
       <p class="muted">No jobs in history yet.</p>
     {:else}
-      <div class="table">
-        <div class="table-head">
+      <div class="table" style="display: block;">
+        <div style="display: grid; grid-template-columns: 100px 80px 1fr 1fr 180px 200px; gap: 1rem; padding: 0.75rem 1rem; font-weight: 600; border-bottom: 2px solid var(--border); background: var(--surface-dim);">
           <span>ID</span>
           <span>Type</span>
           <span>Device</span>
@@ -948,13 +1012,29 @@
           <span>Status</span>
         </div>
         {#each history as job}
-          <div class="table-row">
-            <span>{job.id}</span>
-            <span>{job.job_type}</span>
-            <span>{job.device_id || 'N/A'}</span>
-            <span>{job.target_id || 'N/A'}</span>
-            <span>{new Date(job.created_at).toLocaleString()}</span>
-            <span class={`badge ${job.status === 'completed' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'}`}>{job.status}</span>
+          <div style="display: grid; grid-template-columns: 100px 80px 1fr 1fr 180px 200px; gap: 1rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); align-items: start;">
+            <span style="font-family: monospace; font-size: 0.875rem;">{job.id.slice(0, 8)}</span>
+            <span style="font-size: 0.875rem;">{job.job_type}</span>
+            <span style="font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis;" title={job.device_id}>{job.device_id || 'N/A'}</span>
+            <span style="font-size: 0.875rem;">{job.target_id || 'N/A'}</span>
+            <span style="font-size: 0.875rem;">{new Date(job.created_at).toLocaleString()}</span>
+            <div>
+              <span class={`badge ${job.status === 'completed' && !job.message ? 'success' : job.status === 'failed' ? 'danger' : job.message ? 'warning' : 'warning'}`}>
+                {job.status === 'completed' && job.message ? '⚠️ Upload failed' : job.status}
+              </span>
+              {#if job.message}
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--danger); padding: 0.5rem; background: rgba(255, 100, 100, 0.1); border-radius: 4px; border: 1px solid rgba(255, 100, 100, 0.3);">
+                  ❌ {job.message}
+                </div>
+                <button 
+                  class="primary small" 
+                  style="margin-top: 0.5rem; width: 100%;"
+                  on:click={() => retryUpload(job.id)}
+                >
+                  🔄 Retry Upload
+                </button>
+              {/if}
+            </div>
           </div>
         {/each}
       </div>

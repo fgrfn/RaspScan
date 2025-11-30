@@ -490,9 +490,30 @@ class ScannerManager:
                 print(f"Warning: Failed to generate thumbnail: {e}")
             
             # Deliver to target
-            TargetManager().deliver(target_id, str(final_file), {'job_id': job_id})
-            
-            print(f"Scan job {job_id} completed successfully")
+            try:
+                TargetManager().deliver(target_id, str(final_file), {'job_id': job_id})
+                
+                # Update job status to completed
+                job = job_manager.get_job(job_id)
+                if job:
+                    job.status = JobStatus.completed
+                    job.message = None
+                    job_manager.update_job(job)
+                
+                print(f"Scan job {job_id} completed successfully")
+                
+            except Exception as delivery_error:
+                print(f"⚠️ Delivery failed for job {job_id}: {delivery_error}")
+                
+                # Mark job as completed but with delivery failure
+                job = job_manager.get_job(job_id)
+                if job:
+                    job.status = JobStatus.completed  # Scan was successful
+                    job.message = f"Upload failed: {str(delivery_error)}"
+                    job_manager.update_job(job)
+                
+                print(f"Scan completed but delivery failed. File saved locally: {final_file}")
+                # Don't raise - scan was successful, just delivery failed
             
             # Send webhook notification if configured
             if webhook_url:
