@@ -13,25 +13,29 @@ rest_command:
     content_type: "application/json"
     payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "document"}'
 
-# Button zum Auslösen des Scans
-button:
-  - platform: template
-    name: "Dokument scannen"
-    icon: mdi:scanner
-    unique_id: scan_document_button
-
-# Automation zum Triggern
-automation scan_trigger:
-  alias: "Scan bei Button-Druck"
-  trigger:
-    - platform: state
-      entity_id: button.dokument_scannen
-  action:
-    - service: rest_command.scan_document
-    - service: persistent_notification.create
-      data:
-        title: "Scan gestartet"
-        message: "Ihr Dokument wird gescannt"
+# Scripts for simple buttons (recommended for beginners)
+script:
+  # Flatbed scan (single page)
+  scan_flatbed:
+    alias: "Scan Flatbed"
+    icon: mdi:file-document-outline
+    sequence:
+      - service: rest_command.scan_document
+      - service: notify.persistent_notification
+        data:
+          title: "Scan started"
+          message: "Flatbed scan in progress..."
+  
+  # ADF scan (multiple pages)
+  scan_adf:
+    alias: "Scan ADF (Multi-page)"
+    icon: mdi:file-document-multiple-outline
+    sequence:
+      - service: rest_command.scan_multipage
+      - service: notify.persistent_notification
+        data:
+          title: "Scan started"
+          message: "ADF scan (document feeder) in progress..."
 ```
 
 **Wichtig:** Ersetzen Sie `192.168.1.100` mit der IP-Adresse Ihres Scan2Target-Servers.

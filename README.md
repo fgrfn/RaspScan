@@ -123,7 +123,36 @@ rest_command:
     url: "http://YOUR_SERVER_IP/api/v1/homeassistant/scan"
     method: POST
     content_type: "application/json"
-    payload: '{"scanner_id": "favorite", "target_id": "favorite"}'
+    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "document"}'
+  
+  scan_multipage:
+    url: "http://YOUR_SERVER_IP/api/v1/homeassistant/scan"
+    method: POST
+    content_type: "application/json"
+    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "adf", "source": "ADF"}'
+
+script:
+  # Flatbed scan (single page)
+  scan_flatbed:
+    alias: "Scan Flatbed"
+    icon: mdi:file-document-outline
+    sequence:
+      - service: rest_command.scan_document
+      - service: notify.persistent_notification
+        data:
+          title: "Scan started"
+          message: "Flatbed scan in progress..."
+  
+  # ADF scan (multiple pages)
+  scan_adf:
+    alias: "Scan ADF (Multi-page)"
+    icon: mdi:file-document-multiple-outline
+    sequence:
+      - service: rest_command.scan_multipage
+      - service: notify.persistent_notification
+        data:
+          title: "Scan started"
+          message: "ADF scan in progress..."
 ```
 
 **Features:**
