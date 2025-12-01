@@ -60,8 +60,8 @@ Scan2Target is a web-based scan server for Linux systems, Raspberry Pi, and virt
 4. **Execution**: Start scan with requested parameters; stream to temporary file.
 5. **Post-processing**: Convert to PDF/JPEG as needed; apply filename template `{prefix}{profile}_{date}_{time}.{ext}`.
 6. **Target Delivery**: Core/Targets writes or uploads the file to the selected destination; optional webhook notification.
-7. **Job Tracking**: Core/Jobs records status transitions (queued → running → delivered/failed) and stores metadata (scanner, profile, target, file path/URL). All timestamps stored as UTC.
-8. **UI Feedback**: Clients poll `GET /api/v1/scan/jobs/{id}` or receive WebSocket events for progress. Frontend converts UTC timestamps to browser local time.
+7. **Job Tracking**: Core/Jobs records status transitions (queued → running → completed/failed/cancelled) and stores metadata (scanner, profile, target, file path/URL). All timestamps stored as UTC. Jobs can be cancelled via `POST /api/v1/history/{id}/cancel` which stops the background task and updates status.
+8. **UI Feedback**: Clients poll `GET /api/v1/scan/jobs/{id}` or receive WebSocket events for progress. Frontend converts UTC timestamps to browser local time. Active scans show cancel button for immediate termination.
 
 ### Print Workflow
 1. **User Action**: Upload PDF/JPEG/PNG, choose printer and options.
@@ -95,6 +95,8 @@ Scan2Target is a web-based scan server for Linux systems, Raspberry Pi, and virt
 - `GET /api/v1/history` — unified scan/print history.
 - `DELETE /api/v1/history` — clear completed jobs.
 - `DELETE /api/v1/history/{id}` — delete single job.
+- `POST /api/v1/history/{id}/cancel` — cancel running or queued job.
+- `POST /api/v1/history/{id}/retry-upload` — retry failed upload.
 - `GET /api/v1/stats/overview` — total scans, success rate, averages.
 - `GET /api/v1/stats/timeline` — daily scan counts (last 30 days).
 - `GET /api/v1/stats/scanners` — per-scanner usage statistics.
@@ -102,6 +104,8 @@ Scan2Target is a web-based scan server for Linux systems, Raspberry Pi, and virt
 - `DELETE /api/v1/stats/targets/{name}` — delete all jobs for a target.
 - `POST /api/v1/auth/login` — obtain session/token.
 - `POST /api/v1/auth/logout` — revoke session.
+- `POST /api/v1/homeassistant/scan` — Home Assistant scan trigger (supports favorites).
+- `GET /api/v1/homeassistant/status` — Home Assistant status sensor.
 
 Example payloads:
 ```json
@@ -130,7 +134,7 @@ POST /api/v1/print
   - `Printer`: id, uri, name, status, defaults.
   - `ScanProfile`: id, dpi, color_mode, paper_size, format.
   - `Target`: id, type (local, smb, sftp, email, paperless_folder, paperless_api, webhook), config blob (encrypted fields for credentials), enabled flag.
-  - `Job`: id, type (scan/print), device_id, target_id (scan), printer_id (print), file_path/url, status, timestamps, logs.
+  - `Job`: id, type (scan/print), device_id, target_id (scan), printer_id (print), file_path/url, status (queued/running/completed/failed/cancelled), timestamps, logs.
 
 ## Security Model
 - **Auth:** Session or JWT tokens; password hashing via `argon2` or `bcrypt`; HTTPS recommended behind Caddy/nginx; optional IP allowlist enforced per request.

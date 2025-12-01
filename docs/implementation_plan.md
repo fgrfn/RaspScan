@@ -39,6 +39,13 @@
 - Delete target statistics
 - Formatted scanner names (model + IP)
 - Real-time timezone conversion (UTC to local)
+- Job cancellation for running/queued scans
+- Home Assistant REST API integration:
+  - Scan trigger endpoint with favorites support
+  - Status sensor for monitoring
+  - Complete documentation with examples
+  - REST commands, scripts, automations
+  - Dashboard card templates
 
 ### ✅ Advanced Features
 - Multi-page scanning (ADF support)

@@ -19,6 +19,7 @@ Modern web-based scan server for network and USB scanners. Control scanners remo
 - 📱 **PWA** - Install as native app
 - 🔍 **Preview** - Low-res preview before full scan
 - ⚡ **Real-Time** - WebSocket live updates with timezone conversion
+- ❌ **Job Control** - Cancel running scans instantly
 
 ## Quick Start
 
@@ -142,6 +143,7 @@ Full REST API with Swagger docs at: `http://YOUR_SERVER_IP/docs`
 **Key Endpoints:**
 - `POST /api/v1/scan/start` - Start scan
 - `POST /api/v1/scan/preview` - Quick preview
+- `POST /api/v1/history/{job_id}/cancel` - Cancel running job
 - `GET /api/v1/devices/discover` - Find scanners
 - `GET /api/v1/stats/overview` - Statistics
 - `POST /api/v1/homeassistant/scan` - Home Assistant trigger
