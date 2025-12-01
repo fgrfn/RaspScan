@@ -140,7 +140,7 @@ async def trigger_scan_from_homeassistant(
             target = favorite_targets[0]
         else:
             # Get target by ID
-            target = target_repo.get_by_id(request.target_id)
+            target = target_repo.get(request.target_id)
             if not target:
                 raise HTTPException(
                     status_code=404,
