@@ -10,7 +10,7 @@ from app.core.devices.repository import DeviceRepository
 from app.core.targets.repository import TargetRepository
 from app.core.jobs.repository import JobRepository
 from app.core.jobs.manager import JobManager
-from app.core.auth.dependencies import optional_auth
+from app.core.auth.dependencies import get_current_user_optional
 
 router = APIRouter()
 
@@ -59,7 +59,7 @@ class HomeAssistantStatusResponse(BaseModel):
 @router.post("/scan", response_model=HomeAssistantScanResponse)
 async def trigger_scan_from_homeassistant(
     request: HomeAssistantScanRequest,
-    current_user = Depends(optional_auth)
+    current_user = Depends(get_current_user_optional)
 ):
     """
     Trigger a scan from Home Assistant.
@@ -198,7 +198,7 @@ async def trigger_scan_from_homeassistant(
 
 
 @router.get("/status", response_model=HomeAssistantStatusResponse)
-async def get_homeassistant_status(current_user = Depends(optional_auth)):
+async def get_homeassistant_status(current_user = Depends(get_current_user_optional)):
     """
     Get Scan2Target status for Home Assistant sensors.
     
@@ -258,7 +258,7 @@ async def get_homeassistant_status(current_user = Depends(optional_auth)):
 
 
 @router.get("/scanners")
-async def list_scanners_for_homeassistant(current_user = Depends(optional_auth)):
+async def list_scanners_for_homeassistant(current_user = Depends(get_current_user_optional)):
     """
     List available scanners for Home Assistant dropdown/select.
     
@@ -294,7 +294,7 @@ async def list_scanners_for_homeassistant(current_user = Depends(optional_auth))
 
 
 @router.get("/targets")
-async def list_targets_for_homeassistant(current_user = Depends(optional_auth)):
+async def list_targets_for_homeassistant(current_user = Depends(get_current_user_optional)):
     """
     List available targets for Home Assistant dropdown/select.
     
@@ -331,7 +331,7 @@ async def list_targets_for_homeassistant(current_user = Depends(optional_auth)):
 
 
 @router.get("/profiles")
-async def list_profiles_for_homeassistant(current_user = Depends(optional_auth)):
+async def list_profiles_for_homeassistant(current_user = Depends(get_current_user_optional)):
     """
     List available scan profiles for Home Assistant dropdown/select.
     """
