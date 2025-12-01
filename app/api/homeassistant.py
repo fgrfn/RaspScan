@@ -126,10 +126,9 @@ async def trigger_scan_from_homeassistant(
                 )
         
         # Resolve target
-        target_id = request.target_id
         target = None
         
-        if target_id == "favorite" or target_id is None:
+        if request.target_id == "favorite" or request.target_id is None:
             # Get favorite target from database
             targets = target_repo.list()
             favorite_targets = [t for t in targets if t.is_favorite]
@@ -139,14 +138,13 @@ async def trigger_scan_from_homeassistant(
                     detail="No favorite target configured. Please mark a target as favorite in the Web UI (⭐ star icon)."
                 )
             target = favorite_targets[0]
-            target_id = target.id
         else:
             # Get target by ID
-            target = target_repo.get_by_id(target_id)
+            target = target_repo.get_by_id(request.target_id)
             if not target:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Target not found: {target_id}"
+                    detail=f"Target not found: {request.target_id}"
                 )
         
         # Generate filename
@@ -154,9 +152,9 @@ async def trigger_scan_from_homeassistant(
         
         # Start scan using ScannerManager (same as /api/v1/scan/start)
         job_id = scanner_manager.start_scan(
-            device_id=scanner.uri,  # Use URI not database ID
+            device_id=scanner.uri,  # Use device URI
             profile_id=request.profile,
-            target_id=target_id,
+            target_id=target.id,  # Use target.id (e.g. "unraid_docs"), not database ID
             filename_prefix=filename,
             webhook_url=None
         )
