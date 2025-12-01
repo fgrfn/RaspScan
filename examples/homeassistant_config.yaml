@@ -11,7 +11,7 @@ rest_command:
     url: "http://192.168.1.100/api/v1/homeassistant/scan"
     method: POST
     content_type: "application/json"
-    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "document"}'
+    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "document_200_pdf"}'
 
 # Scripts for simple buttons (recommended for beginners)
 script:
@@ -128,7 +128,7 @@ rest_command:
       {
         "scanner_id": "favorite",
         "target_id": "favorite",
-        "profile": "{% if states('input_select.scan_profile') == 'Dokument (200 DPI, Grau)' %}document{% elif states('input_select.scan_profile') == 'Mehrseiten ADF' %}adf{% elif states('input_select.scan_profile') == 'Farbe (300 DPI)' %}color{% else %}photo{% endif %}",
+        "profile": "{% if states('input_select.scan_profile') == 'Dokument (200 DPI, Grau)' %}document_200_pdf{% elif states('input_select.scan_profile') == 'Mehrseiten ADF' %}document_adf_200_pdf{% elif states('input_select.scan_profile') == 'Farbe (300 DPI)' %}color_300_pdf{% else %}photo_600_jpeg{% endif %}",
         "filename": "{{ states('input_text.scan_filename') if states('input_text.scan_filename') != '' else omit }}"
       }
   
@@ -137,25 +137,25 @@ rest_command:
     url: "http://192.168.1.100/api/v1/homeassistant/scan"
     method: POST
     content_type: "application/json"
-    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "document"}'
+    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "document_200_pdf"}'
   
   scan_multipage:
     url: "http://192.168.1.100/api/v1/homeassistant/scan"
     method: POST
     content_type: "application/json"
-    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "adf", "source": "ADF"}'
+    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "document_adf_200_pdf"}'
   
   scan_color:
     url: "http://192.168.1.100/api/v1/homeassistant/scan"
     method: POST
     content_type: "application/json"
-    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "color"}'
+    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "color_300_pdf"}'
   
   scan_photo:
     url: "http://192.168.1.100/api/v1/homeassistant/scan"
     method: POST
     content_type: "application/json"
-    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "photo"}'
+    payload: '{"scanner_id": "favorite", "target_id": "favorite", "profile": "photo_600_jpeg"}'
 
 # Automations
 automation:

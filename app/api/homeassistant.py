@@ -17,18 +17,16 @@ class HomeAssistantScanRequest(BaseModel):
     """Home Assistant scan request model."""
     scanner_id: Optional[str] = Field(None, description="Scanner ID or 'favorite' to use favorite scanner")
     target_id: Optional[str] = Field(None, description="Target ID or 'favorite' to use favorite target")
-    profile: Optional[str] = Field("document", description="Scan profile name")
+    profile: Optional[str] = Field("document_200_pdf", description="Scan profile ID (e.g., 'document_200_pdf', 'document_adf_200_pdf', 'color_300_pdf', 'photo_600_jpeg')")
     filename: Optional[str] = Field(None, description="Custom filename (without extension)")
-    source: Optional[str] = Field("Flatbed", description="Scan source (Flatbed or ADF)")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "scanner_id": "favorite",
                 "target_id": "favorite",
-                "profile": "document",
-                "filename": "scan_{date}",
-                "source": "Flatbed"
+                "profile": "document_200_pdf",
+                "filename": "scan_{date}"
             }
         }
 
