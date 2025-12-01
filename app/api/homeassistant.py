@@ -133,7 +133,7 @@ async def trigger_scan_from_homeassistant(
         
         if target_id == "favorite" or target_id is None:
             # Get favorite target from database
-            targets = target_repo.list_targets()
+            targets = target_repo.list()
             favorite_targets = [t for t in targets if t.is_favorite]
             if not favorite_targets:
                 raise HTTPException(
@@ -236,7 +236,7 @@ async def get_homeassistant_status(
     try:
         # Get counts
         scanners = device_repo.list_devices(device_type="scanner")
-        targets = target_repo.list_targets()
+        targets = target_repo.list()
         active_jobs = job_repo.get_active_jobs()
         
         # Get last scan
@@ -323,7 +323,7 @@ async def list_targets_for_homeassistant(
     target_repo = TargetRepository()
     
     try:
-        targets = target_repo.list_targets()
+        targets = target_repo.list()
         return {
             "targets": [
                 {
