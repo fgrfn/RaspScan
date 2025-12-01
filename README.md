@@ -110,6 +110,31 @@ sudo systemctl status scan2target   # Status
 sudo journalctl -u scan2target -f   # Logs
 ```
 
+## Home Assistant Integration
+
+Trigger scans from Home Assistant automations, buttons, voice commands, or NFC tags.
+
+**Quick Setup:**
+```yaml
+# configuration.yaml
+rest_command:
+  scan_document:
+    url: "http://YOUR_SERVER_IP/api/v1/homeassistant/scan"
+    method: POST
+    content_type: "application/json"
+    payload: '{"scanner_id": "favorite", "target_id": "favorite"}'
+```
+
+**Features:**
+- ✅ REST commands for all scan profiles
+- ✅ Status sensor with real-time updates
+- ✅ Voice commands & NFC tag support
+- ✅ Actionable notifications
+- ✅ Scheduled automatic scans
+
+📖 **Full documentation:** [docs/homeassistant.md](docs/homeassistant.md)  
+📋 **Example configs:** [examples/homeassistant_config.yaml](examples/homeassistant_config.yaml)
+
 ## API
 
 Full REST API with Swagger docs at: `http://YOUR_SERVER_IP/docs`
@@ -119,6 +144,8 @@ Full REST API with Swagger docs at: `http://YOUR_SERVER_IP/docs`
 - `POST /api/v1/scan/preview` - Quick preview
 - `GET /api/v1/devices/discover` - Find scanners
 - `GET /api/v1/stats/overview` - Statistics
+- `POST /api/v1/homeassistant/scan` - Home Assistant trigger
+- `GET /api/v1/homeassistant/status` - HA status sensor
 - `WS /api/v1/ws` - Real-time updates
 
 ## Development
