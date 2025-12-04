@@ -410,12 +410,20 @@ class TargetManager:
         username = target.config.get('username', 'guest')
         password = target.config.get('password', '')
         share = target.config['connection']
+        upload_path = target.config.get('upload_path', '.')
+        
+        # Normalize upload path
+        if upload_path and upload_path != '.':
+            upload_path = upload_path.strip('/')
+            target_file = f"{upload_path}/{file.name}"
+        else:
+            target_file = file.name
         
         # Use smbclient to upload
         cmd = [
             'smbclient', share,
             '-U', f"{username}%{password}",
-            '-c', f'put "{file}" "{file.name}"'
+            '-c', f'put "{file}" "{target_file}"'
         ]
         result = subprocess.run(cmd, capture_output=True, timeout=60)
         if result.returncode != 0:

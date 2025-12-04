@@ -1062,6 +1062,7 @@
       config.connection = targetConnection;
       config.username = targetUsername;
       config.password = targetPassword;
+      config.upload_path = targetRemotePath || '.';
     } else if (targetType === 'SFTP') {
       if (!targetSftpHost || !targetUsername) {
         alert('Please fill in SFTP host and username');
@@ -2112,6 +2113,9 @@
             <input id="target-username" type="text" placeholder={t.usernamePlaceholder} bind:value={targetUsername} />
             <label for="target-password">{t.password}</label>
             <input id="target-password" type="password" placeholder={t.passwordPlaceholder} bind:value={targetPassword} />
+            <label for="target-upload-path">{t.remotePath}</label>
+            <input id="target-upload-path" type="text" placeholder="/consume" bind:value={targetRemotePath} />
+            <p class="muted small" style="margin-top: 0.25rem; margin-bottom: 0.75rem;">Optional: Subdirectory within the share (e.g., /consume, /subfolder)</p>
           {:else if targetType === 'SFTP'}
             <label for="target-sftp-host">{t.sftpHost}</label>
             <input id="target-sftp-host" type="text" placeholder={t.sftpHostPlaceholder} bind:value={targetSftpHost} />
